@@ -405,6 +405,38 @@ describe("credits in the database", () => {
 		expect(await creditsOf(gone)).toBe(1);
 	});
 
+	it("undo a delivery once only, and never a finished one", async () => {
+		const ports = fakePorts();
+		const writer = await seedActiveUser(ports, "writer@example.com");
+		const reader = await seedActiveUser(ports, "reader@example.com", 1);
+		const letter = await seedTravelingLetter(ports, writer, T0);
+		await reserveDelivery(env.DB, {
+			letterId: letter.id,
+			recipientId: reader.id,
+			reportToken: "report-1",
+			now: T0,
+		});
+		await undoDelivery(env.DB, letter.id, reader.id, T0);
+		await undoDelivery(env.DB, letter.id, reader.id, T0);
+		expect(await creditsOf(reader)).toBe(1);
+		expect(
+			(await eventKinds()).filter((kind) => kind === "delivery_undone"),
+		).toHaveLength(1);
+		await reserveDelivery(env.DB, {
+			letterId: letter.id,
+			recipientId: reader.id,
+			reportToken: "report-2",
+			now: T0,
+		});
+		await completeDelivery(env.DB, letter.id, reader.id, "provider-1", T0);
+		await undoDelivery(env.DB, letter.id, reader.id, T0);
+		expect(await creditsOf(reader)).toBe(0);
+		expect(must(await findLetter(env.DB, letter.id)).status).toBe("delivered");
+		expect(
+			(await eventKinds()).filter((kind) => kind === "delivery_undone"),
+		).toHaveLength(1);
+	});
+
 	it("undo a delivery whose mail failed, returning the credit and the journey", async () => {
 		const ports = fakePorts();
 		const writer = await seedActiveUser(ports, "writer@example.com");

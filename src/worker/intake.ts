@@ -308,9 +308,10 @@ async function reply(incoming: Incoming, mail: Mail): Promise<void> {
 			text: mail.text,
 		});
 	} catch (error) {
+		// The name alone is logged: a provider's message may quote the mail, and the log never carries a sender's words.
 		console.warn(
 			"reply refused",
-			error instanceof Error ? error.message : String(error),
+			error instanceof Error ? error.name : typeof error,
 		);
 		await recordEvent(db, { kind: "reply_failed", now });
 	}

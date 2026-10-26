@@ -28,6 +28,11 @@ describe("prepareLetterText", () => {
 		["or +81 3 1234 5678", "phone-number"],
 		["or +1 (415) 555-0132", "phone-number"],
 		["digits 123456789 in a row", "phone-number"],
+		["電話は０９０−１２３４−５６７８へ", "phone-number"],
+		["or 090-１２３４-5678 mixed", "phone-number"],
+		["ｗｗｗ．example．com をどうぞ", "url"],
+		["ｈｔｔｐｓ：／／example.com", "url"],
+		["ｓｏｍｅｏｎｅ＠example．org", "email-address"],
 	])("rejects %j as %s", (raw, problem) => {
 		expect(prepareLetterText(raw)).toEqual({ ok: false, problem });
 	});

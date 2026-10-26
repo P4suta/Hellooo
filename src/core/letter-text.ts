@@ -17,7 +17,8 @@ const BLANK = new Set([" ", "\t"]);
 const SCHEME_URL = /[a-z]:\/\//i;
 const WWW_HOST = /\bwww\./i;
 const EMAIL_ADDRESS = /[^\s@]@[^\s@.]+\.[^\s@]/;
-const PHONE_NUMBER = /\+?\d(?:[\s().-]*\d){8,}/;
+/** Digits joined by blanks, brackets, dots, or any dash, including the minus sign and the long vowel mark that Japanese text uses for one. */
+const PHONE_NUMBER = /\+?\d(?:[\s().\p{Pd}−ー]*\d){8,}/u;
 
 const PROBLEMS: readonly (readonly [RegExp, LetterTextProblem])[] = [
 	[SCHEME_URL, "url"],
@@ -43,21 +44,35 @@ export function withoutTrailingBlanks(text: string): string {
 
 /** Normalizes a plain-text body, bounds it by code points, and refuses contact details that would leak identities. */
 export function prepareLetterText(raw: string): LetterText {
-	const text = [
-		...withoutTrailingBlanks(raw.replace(LINE_BREAK, "\n"))
+	const text = firstCodePoints(
+		withoutTrailingBlanks(raw.replace(LINE_BREAK, "\n"))
 			.replace(BLANK_RUN, "\n\n")
 			.trim(),
-	]
-		.slice(0, LETTER_MAX_CHARS)
-		.join("")
-		.trim();
+		LETTER_MAX_CHARS,
+	).trim();
 	if (text.length === 0) {
 		return { ok: false, problem: "empty" };
 	}
+	// Contact details are sought in the compatibility form, so full-width digits and letters hide nothing; the stored text keeps its own form.
+	const compared = text.normalize("NFKC");
 	for (const [pattern, problem] of PROBLEMS) {
-		if (pattern.test(text)) {
+		if (pattern.test(compared)) {
 			return { ok: false, problem };
 		}
 	}
 	return { ok: true, text };
+}
+
+/** The first `count` code points of the text, counted while walking it, so a long body is never spread into an array. */
+function firstCodePoints(text: string, count: number): string {
+	let seen = 0;
+	let end = 0;
+	for (const point of text) {
+		if (seen >= count) {
+			break;
+		}
+		seen += 1;
+		end += point.length;
+	}
+	return text.slice(0, end);
 }

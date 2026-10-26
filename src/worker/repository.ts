@@ -761,18 +761,30 @@ export async function undoDelivery(
 	recipientId: UserId,
 	now: Instant,
 ): Promise<void> {
+	// Every statement follows the one reservation that still waits for the provider, so a second undo, or one for a finished delivery, changes nothing.
+	const reserved =
+		"EXISTS (SELECT 1 FROM deliveries WHERE letter_id = ?1 AND recipient_id = ?2 AND provider_message_id IS NULL)";
 	await db.batch([
-		db.prepare("DELETE FROM deliveries WHERE letter_id = ?").bind(id),
 		db
-			.prepare("UPDATE users SET credits = credits + 1 WHERE id = ?")
-			.bind(recipientId),
-		db.prepare("UPDATE letters SET status = 'traveling' WHERE id = ?").bind(id),
-		eventStatement(db, {
-			kind: "delivery_undone",
-			userId: recipientId,
-			letterId: id,
-			now,
-		}),
+			.prepare(
+				`UPDATE users SET credits = credits + 1 WHERE id = ?2 AND ${reserved}`,
+			)
+			.bind(id, recipientId),
+		db
+			.prepare(
+				`UPDATE letters SET status = 'traveling' WHERE id = ?1 AND ${reserved}`,
+			)
+			.bind(id, recipientId),
+		db
+			.prepare(
+				`INSERT INTO events (kind, user_id, letter_id, detail, created_at) SELECT 'delivery_undone', ?2, ?1, NULL, ?3 WHERE ${reserved}`,
+			)
+			.bind(id, recipientId, now),
+		db
+			.prepare(
+				"DELETE FROM deliveries WHERE letter_id = ?1 AND recipient_id = ?2 AND provider_message_id IS NULL",
+			)
+			.bind(id, recipientId),
 	]);
 }
 
