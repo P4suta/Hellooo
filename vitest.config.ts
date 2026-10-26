@@ -2,6 +2,8 @@ import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
 import { defineConfig } from "vitest/config";
 
 const D1_MIGRATIONS = "./migrations";
+/** The batch and model-based tests run hundreds of D1 statements, which a shared CI runner has taken over ten seconds for. */
+const WORKER_TEST_TIMEOUT_MS = 30_000;
 
 export default defineConfig({
 	test: {
@@ -31,6 +33,7 @@ export default defineConfig({
 					name: "worker",
 					include: ["test/worker/**/*.test.ts"],
 					setupFiles: ["test/worker/apply-migrations.ts"],
+					testTimeout: WORKER_TEST_TIMEOUT_MS,
 				},
 			},
 		],

@@ -31,6 +31,8 @@ describe("normalizeEmailAddress", () => {
 		'"quoted"@example.com',
 		"a<b@example.com",
 		"a@例え.jp",
+		"a@K.com",
+		"ａ@example.com",
 		`${"x".repeat(65)}@example.com`,
 		`a@${"b".repeat(250)}.com`,
 	])("rejects %j", (raw) => {

@@ -9,16 +9,19 @@ const MIN_DOMAIN_LABELS = 2;
 const LOCAL_PART =
 	/^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/;
 const DOMAIN_LABEL = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
+/** Lowercasing folds some letters outside ASCII into ASCII, such as the Kelvin sign into `k`, so the raw address must already be ASCII. */
+const ASCII = /^[\x20-\x7e]*$/;
 
 /**
  * Lowercases and trims an address, and admits only `local@label.label` shapes with a dotted ASCII domain.
  * Quoted local parts and internationalized domains stay out, because the service never writes to such an address.
  */
 export function normalizeEmailAddress(raw: string): EmailAddress | null {
-	const address = raw.trim().toLowerCase();
-	if (address.length > MAX_ADDRESS_LENGTH) {
+	const trimmed = raw.trim();
+	if (trimmed.length > MAX_ADDRESS_LENGTH || !ASCII.test(trimmed)) {
 		return null;
 	}
+	const address = trimmed.toLowerCase();
 	const at = address.indexOf("@");
 	if (at === -1) {
 		return null;

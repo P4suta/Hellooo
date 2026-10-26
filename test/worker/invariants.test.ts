@@ -66,7 +66,11 @@ const operation: fc.Arbitrary<Operation> = fc.oneof(
 type World = {
 	readonly ids: Map<Person, UserId>;
 	readonly letters: Map<Person, Letter[]>;
-	readonly reservations: { letter: Letter; recipient: UserId }[];
+	readonly reservations: {
+		letter: Letter;
+		recipient: UserId;
+		completed: boolean;
+	}[];
 	ledger: Ledger;
 	tokens: number;
 };
@@ -169,23 +173,27 @@ async function apply(world: World, op: Operation, now: number): Promise<void> {
 				modelCredits(world.ledger, recipient) > 0;
 			expect(reserved).toBe(modelAllows);
 			if (reserved) {
-				world.reservations.push({ letter, recipient });
+				world.reservations.push({ letter, recipient, completed: false });
 				world.ledger = must(recordDelivered(world.ledger, recipient));
 			}
 			return;
 		}
 		case "undo": {
-			const reservation = world.reservations.pop();
+			const reservation = world.reservations.at(-1);
 			if (reservation === undefined) {
 				return;
 			}
+			// The database is asked to undo whatever the reservation's state, and the model moves only for one still waiting for the provider.
 			await undoDelivery(
 				env.DB,
 				reservation.letter.id,
 				reservation.recipient,
 				addMillis(T0, now),
 			);
-			world.ledger = must(recordUndone(world.ledger, reservation.recipient));
+			if (!reservation.completed) {
+				world.reservations.pop();
+				world.ledger = must(recordUndone(world.ledger, reservation.recipient));
+			}
 			return;
 		}
 		case "complete": {
@@ -200,6 +208,7 @@ async function apply(world: World, op: Operation, now: number): Promise<void> {
 				`provider-${world.tokens}`,
 				addMillis(T0, now),
 			);
+			reservation.completed = true;
 			return;
 		}
 		case "unsubscribe":
