@@ -37,8 +37,26 @@ describe("readConfig", () => {
 		["an empty model", { MODERATION_MODEL: "" }],
 		["an empty key", { TYPESAFE_API_KEY: "" }],
 		["an Access issuer that is not a URL", { ACCESS_ISSUER: "team" }],
+		[
+			"a moderation endpoint outside the disclosed processor",
+			{ MODERATION_ENDPOINT: "https://moderation.example/v1/systemone" },
+		],
+		[
+			"a moderation endpoint whose host only resembles the processor",
+			{ MODERATION_ENDPOINT: "https://typesafe.ai.example/v1/systemone" },
+		],
 	])("refuses %s", (_name, override) => {
 		expect(() => readConfig({ ...env, ...override })).toThrow();
+	});
+
+	it.each([
+		"https://api.typesafe.ai/v1/systemone",
+		"http://127.0.0.1:5198/systemone",
+		"http://localhost:5198/systemone",
+	])("accepts the moderation endpoint %s", (endpoint) => {
+		expect(
+			readConfig({ ...env, MODERATION_ENDPOINT: endpoint }).MODERATION_ENDPOINT,
+		).toBe(endpoint);
 	});
 });
 

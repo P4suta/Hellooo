@@ -1,5 +1,19 @@
 import { z } from "zod";
 import { normalizeEmailAddress } from "../core/email-address.ts";
+import { MODERATION_PROCESSOR_DOMAIN } from "../core/legal.ts";
+
+/** Hosts that leave the machine for nobody, so a local stub may stand in for the processor. */
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "[::1]", "localhost"]);
+
+/** Whether letter text sent to this URL reaches only the processor the privacy notice names, or stays on the machine. */
+function reachesDisclosedProcessor(endpoint: string): boolean {
+	const { hostname } = new URL(endpoint);
+	return (
+		hostname === MODERATION_PROCESSOR_DOMAIN ||
+		hostname.endsWith(`.${MODERATION_PROCESSOR_DOMAIN}`) ||
+		LOOPBACK_HOSTS.has(hostname)
+	);
+}
 
 /** A service address under the same rules as a sender's, so comparisons between the two are exact. */
 const Address = z.string().transform((raw, ctx) => {
@@ -19,7 +33,10 @@ const ConfigSchema = z.object({
 	LETTERS_ADDRESS: Address,
 	NOTICES_ADDRESS: Address,
 	PUBLIC_BASE_URL: z.url(),
-	MODERATION_ENDPOINT: z.url(),
+	MODERATION_ENDPOINT: z.url().refine(reachesDisclosedProcessor, {
+		message:
+			"letter text may travel only to the disclosed moderation processor",
+	}),
 	MODERATION_MODEL: z.string().min(1),
 	TYPESAFE_API_KEY: z.string().min(1).optional(),
 	/** The Cloudflare Access team domain that signs operator requests; empty keeps the operator pages closed. */

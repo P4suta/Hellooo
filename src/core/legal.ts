@@ -29,6 +29,9 @@ export const PROCESSORS = {
 	moderation: "TypeSafe",
 } as const;
 
+/** The domain of the disclosed moderation processor; letter text travels there and nowhere else off the machine. */
+export const MODERATION_PROCESSOR_DOMAIN = "typesafe.ai";
+
 type LegalTexts = {
 	readonly terms: (facts: LegalFacts) => LegalPage;
 	readonly privacy: (facts: LegalFacts) => LegalPage;

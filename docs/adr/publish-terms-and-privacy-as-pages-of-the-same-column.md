@@ -27,6 +27,7 @@ The pages are legal text, but the site has one voice and one column, and the fac
 ## Consequences
 
 - A reader can read the retention and the processors that the implementation enforces, and the two stay in step because the page reads the constants.
+- The configuration refuses a moderation endpoint outside the disclosed processor's domain, so letter text cannot reach a recipient the privacy notice does not name; a loopback stub stays allowed because it leaves the machine for nobody.
 - A removal request is handled by the operator by hand through the contact address; the service has no self-service deletion beyond the stop.
 - Review of the wording by a professional stays with the operator, and the jurisdiction changes in one configuration value.
 
