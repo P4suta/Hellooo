@@ -5,13 +5,16 @@ import { MODERATION_PROCESSOR_DOMAIN } from "../core/legal.ts";
 /** Hosts that leave the machine for nobody, so a local stub may stand in for the processor. */
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "[::1]", "localhost"]);
 
-/** Whether letter text sent to this URL reaches only the processor the privacy notice names, or stays on the machine. */
+/** Whether letter text and the key sent to this URL reach only the processor the privacy notice names, and only encrypted, or stay on the machine. */
 function reachesDisclosedProcessor(endpoint: string): boolean {
-	const { hostname } = new URL(endpoint);
+	const { hostname, protocol } = new URL(endpoint);
+	if (LOOPBACK_HOSTS.has(hostname)) {
+		return true;
+	}
 	return (
-		hostname === MODERATION_PROCESSOR_DOMAIN ||
-		hostname.endsWith(`.${MODERATION_PROCESSOR_DOMAIN}`) ||
-		LOOPBACK_HOSTS.has(hostname)
+		protocol === "https:" &&
+		(hostname === MODERATION_PROCESSOR_DOMAIN ||
+			hostname.endsWith(`.${MODERATION_PROCESSOR_DOMAIN}`))
 	);
 }
 
