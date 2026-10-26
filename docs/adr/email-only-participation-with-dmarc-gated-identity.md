@@ -34,6 +34,7 @@ An unsolicited automatic reply to a forged sender would turn the service into a 
 
 - Senders at providers with DMARC alignment, which covers the major consumer mailboxes, send with no extra step.
 - Senders without DMARC alignment confirm each letter with one link, and a forged mail can at most trigger a confirmation that the real owner ignores.
+- A registered address receives at most three confirmation mails a day; further unauthenticated mails in its name pass in silence and store nothing, so a stranger cannot flood it or the letters table.
 - The service depends on Cloudflare adding `Authentication-Results`, and the header's presence and format are verified against real mail before launch.
 - A sender who never writes receives nothing, which keeps the pool to people who took part.
 - The pure core carries the property tests for the credit law, the weekly cap, recipient eligibility, and the journey bounds, and the adapters carry integration tests against D1.

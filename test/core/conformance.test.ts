@@ -39,7 +39,11 @@ import {
 	type UserId,
 	userId,
 } from "../../src/core/types.ts";
-import { rejectionsRemaining, weeklyCap } from "../../src/core/weekly-cap.ts";
+import {
+	confirmationsRemaining,
+	rejectionsRemaining,
+	weeklyCap,
+} from "../../src/core/weekly-cap.ts";
 import { youControls, youView } from "../../src/core/you-page.ts";
 import { must } from "../support/must.ts";
 
@@ -115,6 +119,9 @@ const CapVectors = z.object({
 	rejectionsRemaining: z.array(
 		z.object({ rejectionsInLastDay: Int, remaining: Int }),
 	),
+	confirmationsRemaining: z.array(
+		z.object({ confirmationsInLastDay: Int, remaining: Int }),
+	),
 });
 
 describe("the weekly cap agrees with the proved model", () => {
@@ -133,6 +140,14 @@ describe("the weekly cap agrees with the proved model", () => {
 	it("counts the remaining rejections as the model does", () => {
 		for (const vector of vectors.rejectionsRemaining) {
 			expect(rejectionsRemaining(vector.rejectionsInLastDay)).toBe(
+				vector.remaining,
+			);
+		}
+	});
+
+	it("counts the remaining confirmation mails as the model does", () => {
+		for (const vector of vectors.confirmationsRemaining) {
+			expect(confirmationsRemaining(vector.confirmationsInLastDay)).toBe(
 				vector.remaining,
 			);
 		}

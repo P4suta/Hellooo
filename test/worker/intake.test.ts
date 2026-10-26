@@ -4,7 +4,10 @@ import { DAY_MS } from "../../src/core/duration.ts";
 import { formatDate } from "../../src/core/locale.ts";
 import { messagesFor } from "../../src/core/messages.ts";
 import { addMillis, type UserId } from "../../src/core/types.ts";
-import { DAILY_REJECTION_LIMIT } from "../../src/core/weekly-cap.ts";
+import {
+	DAILY_CONFIRMATION_LIMIT,
+	DAILY_REJECTION_LIMIT,
+} from "../../src/core/weekly-cap.ts";
 import { publicPath } from "../../src/worker/env.ts";
 import { handleIncomingEmail } from "../../src/worker/intake.ts";
 import {
@@ -332,6 +335,36 @@ describe("a registered sender writes", () => {
 			messagesFor("ja").mail.confirmation.intro,
 		);
 		expect(await eventKinds()).toContain("confirmation_sent");
+	});
+
+	it("passes an unauthenticated mail in silence once the day's confirmation mails are spent", async () => {
+		const ports = fakePorts();
+		const somebody = await seedActiveUser(ports, "somebody@example.net", 0);
+		for (let i = 0; i < DAILY_CONFIRMATION_LIMIT; i += 1) {
+			await recordEvent(env.DB, {
+				kind: "confirmation_sent",
+				userId: somebody.id,
+				now: T0,
+			});
+		}
+		const message = fakeMessage(
+			withoutAuthentication,
+			"somebody@example.net",
+			LETTERS,
+		);
+		await handleIncomingEmail(message, env, ports);
+		expect(await letterStatuses()).toEqual([]);
+		expect(ports.sent).toHaveLength(0);
+		expect(message.replies).toHaveLength(0);
+		// A day later the address may be asked again.
+		ports.clock = addMillis(T0, DAY_MS + 1);
+		await handleIncomingEmail(
+			fakeMessage(withoutAuthentication, "somebody@example.net", LETTERS),
+			env,
+			ports,
+		);
+		expect(await letterStatuses()).toEqual(["pending_confirmation"]);
+		expect(ports.sent).toHaveLength(1);
 	});
 
 	it("stops letters to an address the provider refuses instead of confirming through it", async () => {

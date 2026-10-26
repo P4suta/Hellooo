@@ -10,6 +10,7 @@ abbrev Instant := Int
 def WEEK_MS : Int := 7 * 24 * 60 * 60 * 1000
 def LETTER_INTERVAL_MS : Int := WEEK_MS
 def DAILY_REJECTION_LIMIT : Int := 3
+def DAILY_CONFIRMATION_LIMIT : Int := 3
 
 inductive CapCheck where
   | allowed
@@ -28,6 +29,11 @@ def weeklyCap (lastAcceptedAt : Option Instant) (now : Instant) : CapCheck :=
 def rejectionsRemaining (rejectionsInLastDay : Int) : Int :=
   if DAILY_REJECTION_LIMIT - rejectionsInLastDay ≤ 0 then 0
   else DAILY_REJECTION_LIMIT - rejectionsInLastDay
+
+/-- `confirmationsRemaining`, with `Math.max(0, x)` written as a conditional. -/
+def confirmationsRemaining (confirmationsInLastDay : Int) : Int :=
+  if DAILY_CONFIRMATION_LIMIT - confirmationsInLastDay ≤ 0 then 0
+  else DAILY_CONFIRMATION_LIMIT - confirmationsInLastDay
 
 theorem weeklyCap_none (now : Int) : weeklyCap none now = .allowed := rfl
 
@@ -69,6 +75,26 @@ theorem rejectionsRemaining_le_limit (n : Int) (hn : 0 ≤ n) :
 theorem rejectionsRemaining_eq_zero_iff (n : Int) :
     rejectionsRemaining n = 0 ↔ DAILY_REJECTION_LIMIT ≤ n := by
   unfold rejectionsRemaining DAILY_REJECTION_LIMIT
+  constructor
+  · intro h
+    split at h <;> omega
+  · intro h
+    split <;> omega
+
+theorem confirmationsRemaining_nonneg (n : Int) : 0 ≤ confirmationsRemaining n := by
+  unfold confirmationsRemaining
+  split <;> omega
+
+/-- The count of confirmation mails is never negative, so the remaining ones never exceed the limit. -/
+theorem confirmationsRemaining_le_limit (n : Int) (hn : 0 ≤ n) :
+    confirmationsRemaining n ≤ DAILY_CONFIRMATION_LIMIT := by
+  unfold confirmationsRemaining DAILY_CONFIRMATION_LIMIT
+  split <;> omega
+
+/-- The day's confirmation mails are spent exactly when the count reached the limit. -/
+theorem confirmationsRemaining_eq_zero_iff (n : Int) :
+    confirmationsRemaining n = 0 ↔ DAILY_CONFIRMATION_LIMIT ≤ n := by
+  unfold confirmationsRemaining DAILY_CONFIRMATION_LIMIT
   constructor
   · intro h
     split at h <;> omega

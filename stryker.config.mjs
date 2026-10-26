@@ -12,5 +12,5 @@ export default {
 	tempDirName: ".stryker-tmp",
 	reporters: ["clear-text", "progress"],
 	// The release gate reads these: a survivor in the pure core is a missing test, never an accepted exception.
-	thresholds: { high: 100, low: 95, break: 95 },
+	thresholds: { high: 100, low: 100, break: 100 },
 };

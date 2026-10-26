@@ -710,7 +710,17 @@ describe("the letters waiting for the model", () => {
 		});
 		const traveling = await seedTravelingLetter(ports, writer, T0, "traveling");
 		const held = await seedHeldLetter(ports, writer, "held");
+		const unconfirmed = await storeLetter(env.DB, {
+			id: "letter-unconfirmed",
+			senderId: writer.id,
+			body: "unconfirmed",
+			status: "pending_confirmation",
+			confirmToken: "confirm-banned",
+			now: T0,
+		});
 		await banWriter(env.DB, writer.id, T0);
+		expect(must(await findLetter(env.DB, unconfirmed.id)).status).toBe("lost");
+		expect(await findLetterByConfirmToken(env.DB, "confirm-banned")).toBeNull();
 		expect(must(await findUserById(env.DB, writer.id)).status).toBe("banned");
 		expect(must(await findLetter(env.DB, delivered.id)).status).toBe(
 			"delivered",

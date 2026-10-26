@@ -267,11 +267,29 @@ export async function rejectionsInLastDay(
 	senderId: UserId,
 	now: Instant,
 ): Promise<number> {
+	return eventsInLastDay(db, "letter_rejected", senderId, now);
+}
+
+/** Confirmation mails sent to this address in the last day, the count the daily confirmation limit reads. */
+export async function confirmationsInLastDay(
+	db: D1Database,
+	userId: UserId,
+	now: Instant,
+): Promise<number> {
+	return eventsInLastDay(db, "confirmation_sent", userId, now);
+}
+
+async function eventsInLastDay(
+	db: D1Database,
+	kind: EventKind,
+	userId: UserId,
+	now: Instant,
+): Promise<number> {
 	const row = await db
 		.prepare(
-			"SELECT COUNT(*) AS n FROM events WHERE user_id = ? AND kind = 'letter_rejected' AND created_at > ?",
+			"SELECT COUNT(*) AS n FROM events WHERE user_id = ?1 AND kind = ?2 AND created_at > ?3",
 		)
-		.bind(senderId, now - DAY_MS)
+		.bind(userId, kind, now - DAY_MS)
 		.first();
 	return CountRowSchema.parse(row).n;
 }
@@ -819,7 +837,7 @@ export async function banWriter(
 		db.prepare("UPDATE users SET status = 'banned' WHERE id = ?").bind(id),
 		db
 			.prepare(
-				"UPDATE letters SET status = 'lost' WHERE sender_id = ? AND status IN ('held', 'traveling')",
+				`UPDATE letters SET status = 'lost', confirm_token = NULL WHERE sender_id = ? AND status IN (${WAITING}, 'traveling')`,
 			)
 			.bind(id),
 		eventStatement(db, { kind: "user_banned", userId: id, now }),

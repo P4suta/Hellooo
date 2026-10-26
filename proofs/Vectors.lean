@@ -102,11 +102,15 @@ def capVectors : Json :=
       , ("now", jsonInt NOW)
       , ("allowed", Json.bool (check = .allowed))
       , ("nextAllowedAt", capJson check) ]
-  let remaining := ([0, 1, 2, 3, 4, 5, 6] : List Int).map fun n =>
+  let counts : List Int := [0, 1, 2, 3, 4, 5, 6]
+  let remaining := counts.map fun n =>
     Json.mkObj [("rejectionsInLastDay", jsonInt n), ("remaining", jsonInt (rejectionsRemaining n))]
+  let confirmations := counts.map fun n =>
+    Json.mkObj [("confirmationsInLastDay", jsonInt n), ("remaining", jsonInt (confirmationsRemaining n))]
   Json.mkObj
     [ ("weeklyCap", Json.arr checks.toArray)
-    , ("rejectionsRemaining", Json.arr remaining.toArray) ]
+    , ("rejectionsRemaining", Json.arr remaining.toArray)
+    , ("confirmationsRemaining", Json.arr confirmations.toArray) ]
 
 def questionName : Question → String
   | .sells => "sells"

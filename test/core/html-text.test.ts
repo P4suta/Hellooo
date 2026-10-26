@@ -48,6 +48,9 @@ describe("plainTextOfHtml", () => {
 		);
 		expect(plainTextOfHtml("&#x27;x&#x27; &#65;&#x1F600;")).toBe("'x' A😀");
 		expect(plainTextOfHtml("&apos;y&apos; &AMP; &Lt;")).toBe("'y' & <");
+		expect(plainTextOfHtml("&constructor; &toString; &hasOwnProperty;")).toBe(
+			"&constructor; &toString; &hasOwnProperty;",
+		);
 		expect(plainTextOfHtml("&unknown; &#xZZ; &#;")).toBe(
 			"&unknown; &#xZZ; &#;",
 		);

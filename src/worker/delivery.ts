@@ -1,6 +1,6 @@
 import { selectRecipient } from "../core/recipient-selection.ts";
 import { deliveryMail } from "../core/reply-text.ts";
-import type { Instant } from "../core/types.ts";
+import type { Instant, UserId } from "../core/types.ts";
 import { type Config, publicLink, readConfig } from "./env.ts";
 import { type Ports, productionPorts } from "./ports.ts";
 import {
@@ -76,9 +76,34 @@ async function deliverOne(
 	if (!reserved) {
 		return "waiting";
 	}
-	const user = await findUserById(db, recipient.id);
-	if (user === null) {
+	try {
+		return await sendReserved(db, config, ports, letter, recipient.id, now, {
+			reportToken,
+		});
+	} catch (error) {
+		// Whatever broke after the reservation, the letter goes back on its way and the reader keeps the credit; the run itself goes on.
+		console.warn(
+			"delivery failed",
+			error instanceof Error ? error.name : "unknown",
+		);
 		await undoDelivery(db, letter.id, recipient.id, now);
+		return "failed";
+	}
+}
+
+/** Sends the reserved letter to its reader and settles the reservation by the provider's answer. */
+async function sendReserved(
+	db: D1Database,
+	config: Config,
+	ports: Ports,
+	letter: Letter,
+	recipientId: UserId,
+	now: Instant,
+	{ reportToken }: { readonly reportToken: string },
+): Promise<"delivered" | "failed"> {
+	const user = await findUserById(db, recipientId);
+	if (user === null) {
+		await undoDelivery(db, letter.id, recipientId, now);
 		return "failed";
 	}
 	const pageKey = await pageKeyOf(db, user.id);

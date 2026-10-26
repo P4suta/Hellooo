@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { messagesFor } from "../../src/core/messages.ts";
 import { addMillis } from "../../src/core/types.ts";
 import { DUE_LETTERS_PER_RUN, runDelivery } from "../../src/worker/delivery.ts";
+import type { Ports } from "../../src/worker/ports.ts";
 import {
 	findLetter,
 	findUserById,
@@ -174,6 +175,28 @@ describe("the delivery run", () => {
 			waiting: 0,
 			failed: 0,
 		});
+	});
+
+	it("returns the credit and the journey when sending throws, and the run goes on", async () => {
+		const ports = fakePorts();
+		const writer = await seedActiveUser(ports, "writer@example.com");
+		const reader = await seedActiveUser(ports, "reader@example.com", 1);
+		const letter = await seedTravelingLetter(ports, writer, due);
+		const throwing: Ports = {
+			...ports,
+			send: async () => {
+				throw new Error("E_TEST_THROWS");
+			},
+		};
+		expect(await runDelivery(env, throwing)).toEqual({
+			due: 1,
+			delivered: 0,
+			waiting: 0,
+			failed: 1,
+		});
+		expect(await creditsOf(reader)).toBe(1);
+		expect(must(await findLetter(env.DB, letter.id)).status).toBe("traveling");
+		expect(await eventKinds()).toContain("delivery_undone");
 	});
 
 	it("stops letters to a reader whose address the provider refuses, and keeps the letter on its way", async () => {

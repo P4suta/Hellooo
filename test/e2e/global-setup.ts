@@ -189,10 +189,15 @@ function run(args: readonly string[], env: NodeJS.ProcessEnv): Promise<void> {
 	});
 }
 
-async function waitUntilReady(): Promise<void> {
+async function waitUntilReady(dev: ChildProcess): Promise<void> {
 	const deadline = Date.now() + START_TIMEOUT_MS;
 	let lastFailure = "no response yet";
 	while (Date.now() < deadline) {
+		if (dev.exitCode !== null || dev.signalCode !== null) {
+			throw new Error(
+				`cf dev exited before it became ready: ${dev.exitCode ?? dev.signalCode}`,
+			);
+		}
 		try {
 			const response = await fetch(`${DEV_ORIGIN}${READY_PATH}`);
 			if (response.ok) {
@@ -242,7 +247,7 @@ export default async function setup(): Promise<() => Promise<void>> {
 		},
 	);
 	try {
-		await waitUntilReady();
+		await waitUntilReady(dev);
 	} catch (error) {
 		stop(dev);
 		stub.close();
@@ -255,7 +260,17 @@ export default async function setup(): Promise<() => Promise<void>> {
 }
 
 function stop(dev: ChildProcess): void {
-	if (dev.pid !== undefined) {
+	if (dev.pid === undefined) {
+		return;
+	}
+	try {
 		process.kill(-dev.pid, "SIGTERM");
+	} catch (error) {
+		// The group is gone already when the process ended on its own; any other failure is real and stops the cleanup.
+		if (
+			!(error instanceof Error && "code" in error && error.code === "ESRCH")
+		) {
+			throw error;
+		}
 	}
 }

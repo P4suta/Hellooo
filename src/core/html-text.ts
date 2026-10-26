@@ -19,14 +19,15 @@ const BREAKING_TAGS: ReadonlySet<string> = new Set([
 	"/h6",
 	"/tr",
 ]);
-const NAMED_ENTITIES: Readonly<Record<string, string>> = {
-	amp: "&",
-	lt: "<",
-	gt: ">",
-	quot: '"',
-	apos: "'",
-	nbsp: " ",
-};
+/** A map rather than an object, so a name such as `constructor` finds nothing inherited. */
+const NAMED_ENTITIES: ReadonlyMap<string, string> = new Map([
+	["amp", "&"],
+	["lt", "<"],
+	["gt", ">"],
+	["quot", '"'],
+	["apos", "'"],
+	["nbsp", " "],
+]);
 const ENTITY = /&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi;
 /** Everything after a tag's name: from the first whitespace or slash that is not the leading slash of a closing tag. */
 const AFTER_NAME = /(?!^)[\s/].*/s;
@@ -52,7 +53,7 @@ function decodeEntity(entity: string, body: string): string {
 			entity,
 		);
 	}
-	return NAMED_ENTITIES[lower] ?? entity;
+	return NAMED_ENTITIES.get(lower) ?? entity;
 }
 
 /** The digits came from the entity pattern, so the only invalid values lie past the last code point. */

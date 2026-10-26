@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { WEEK_MS } from "../../src/core/duration.ts";
 import { instant } from "../../src/core/types.ts";
 import {
+	confirmationsRemaining,
+	DAILY_CONFIRMATION_LIMIT,
 	DAILY_REJECTION_LIMIT,
 	LETTER_INTERVAL_MS,
 	rejectionsRemaining,
@@ -75,6 +77,24 @@ describe("rejectionsRemaining", () => {
 			fc.property(fc.integer({ min: 0 }), (n) => {
 				const remaining = rejectionsRemaining(n);
 				return remaining >= 0 && remaining <= DAILY_REJECTION_LIMIT;
+			}),
+		);
+	});
+});
+
+describe("confirmationsRemaining", () => {
+	it("counts down from the daily limit to zero and never below", () => {
+		expect(confirmationsRemaining(0)).toBe(DAILY_CONFIRMATION_LIMIT);
+		expect(confirmationsRemaining(1)).toBe(DAILY_CONFIRMATION_LIMIT - 1);
+		expect(confirmationsRemaining(DAILY_CONFIRMATION_LIMIT)).toBe(0);
+		expect(confirmationsRemaining(DAILY_CONFIRMATION_LIMIT + 5)).toBe(0);
+	});
+
+	it("never goes negative and never exceeds the limit", () => {
+		fc.assert(
+			fc.property(fc.integer({ min: 0 }), (n) => {
+				const remaining = confirmationsRemaining(n);
+				return remaining >= 0 && remaining <= DAILY_CONFIRMATION_LIMIT;
 			}),
 		);
 	});

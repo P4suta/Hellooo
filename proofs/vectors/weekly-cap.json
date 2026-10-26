@@ -42,4 +42,12 @@
   {"remaining": 0, "rejectionsInLastDay": 3},
   {"remaining": 0, "rejectionsInLastDay": 4},
   {"remaining": 0, "rejectionsInLastDay": 5},
-  {"remaining": 0, "rejectionsInLastDay": 6}]}
+  {"remaining": 0, "rejectionsInLastDay": 6}],
+ "confirmationsRemaining":
+ [{"remaining": 3, "confirmationsInLastDay": 0},
+  {"remaining": 2, "confirmationsInLastDay": 1},
+  {"remaining": 1, "confirmationsInLastDay": 2},
+  {"remaining": 0, "confirmationsInLastDay": 3},
+  {"remaining": 0, "confirmationsInLastDay": 4},
+  {"remaining": 0, "confirmationsInLastDay": 5},
+  {"remaining": 0, "confirmationsInLastDay": 6}]}

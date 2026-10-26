@@ -142,7 +142,13 @@ describe("the operator's sign-in through Cloudflare Access", () => {
 		],
 		["a key the team never published", () => sign(claims(), otherSigningKey)],
 		["a symmetric signature", () => sign(claims(), "shared-secret", "HS256")],
-		["a token without a key id", () => sign(claims(), signingKey.toString())],
+		[
+			"a token without a key id",
+			() => {
+				const { kid: _kid, ...withoutKid } = signingKey;
+				return sign(claims(), withoutKid);
+			},
+		],
 		["garbage", async () => "not.a.token"],
 	])("refuses %s", async (_name, make) => {
 		expect(

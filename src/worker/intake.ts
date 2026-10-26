@@ -26,10 +26,12 @@ import {
 	verificationMail,
 } from "../core/reply-text.ts";
 import type { EmailAddress, Instant } from "../core/types.ts";
+import { confirmationsRemaining } from "../core/weekly-cap.ts";
 import { type AdmissionOutcome, admitLetter } from "./admission.ts";
 import { type Config, publicLink, readConfig } from "./env.ts";
 import { type Ports, productionPorts } from "./ports.ts";
 import {
+	confirmationsInLastDay,
 	createPendingUser,
 	findUserByEmail,
 	lastAcceptedAt,
@@ -184,6 +186,14 @@ async function apply(
 		}
 		case "confirm": {
 			if (user === null || !text.ok) {
+				return;
+			}
+			// An unauthenticated mail costs the registered address one confirmation mail, so a day allows only a few before the rest pass in silence.
+			if (
+				confirmationsRemaining(
+					await confirmationsInLastDay(db, user.id, now),
+				) === 0
+			) {
 				return;
 			}
 			const confirmToken = ports.token();

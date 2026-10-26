@@ -5,7 +5,7 @@ import {
 } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import worker from "../../src/worker/index.ts";
+import worker, { runStages } from "../../src/worker/index.ts";
 import withDmarcPass from "../fixtures/letter-with-dmarc-pass.eml?raw";
 import { useEmptyStorage } from "./d1.ts";
 import { CONFIG, eventKinds, fakeMessage } from "./fakes.ts";
@@ -36,6 +36,36 @@ describe("the Worker's handlers", () => {
 		);
 		await waitOnExecutionContext(ctx);
 		expect(await eventKinds()).toEqual([]);
+	});
+
+	it("run every scheduled stage even when an earlier one fails, then fail the run", async () => {
+		const ran: string[] = [];
+		await expect(
+			runStages([
+				[
+					"first",
+					async () => {
+						throw new Error("E_TEST_STAGE");
+					},
+				],
+				[
+					"second",
+					async () => {
+						ran.push("second");
+					},
+				],
+				[
+					"third",
+					async () => {
+						ran.push("third");
+					},
+				],
+			]),
+		).rejects.toThrow("stages failed: first");
+		expect(ran).toEqual(["second", "third"]);
+		await expect(
+			runStages([["only", async () => undefined]]),
+		).resolves.toBeUndefined();
 	});
 
 	it("route incoming mail through the intake", async () => {

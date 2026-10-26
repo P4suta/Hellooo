@@ -80,6 +80,7 @@ describe("the schema", () => {
 				"letters_sender_accepted",
 				"deliveries_recipient",
 				"events_user_kind",
+				"events_letter_kind",
 			]),
 		);
 	});
