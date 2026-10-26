@@ -117,6 +117,7 @@ describe("the Worker running under cf dev", () => {
 			`SELECT verify_token FROM users WHERE email = '${WRITER}'`,
 		);
 		const verified = await fetch(`${DEV_ORIGIN}/verify/${verifyToken}`, {
+			method: "POST",
 			headers: { "accept-language": "ja" },
 		});
 		expect(verified.status).toBe(HTTP_OK);
@@ -137,7 +138,9 @@ describe("the Worker running under cf dev", () => {
 		const kakiteToken = await cell(
 			`SELECT verify_token FROM users WHERE email = '${KAKITE}'`,
 		);
-		const kakiteVerified = await fetch(`${DEV_ORIGIN}/verify/${kakiteToken}`);
+		const kakiteVerified = await fetch(`${DEV_ORIGIN}/verify/${kakiteToken}`, {
+			method: "POST",
+		});
 		expect(kakiteVerified.headers.get("content-language")).toBe("ja");
 		expect(await kakiteVerified.text()).toContain(
 			inHtml(web("ja").verify.confirmed.traveling),
@@ -165,7 +168,9 @@ describe("the Worker running under cf dev", () => {
 		const reportToken = await cell(
 			"SELECT report_token FROM deliveries LIMIT 1",
 		);
-		const reported = await fetch(`${DEV_ORIGIN}/report/${reportToken}`);
+		const reported = await fetch(`${DEV_ORIGIN}/report/${reportToken}`, {
+			method: "POST",
+		});
 		expect(reported.status).toBe(HTTP_OK);
 		expect(
 			await cell("SELECT COUNT(*) FROM events WHERE kind = 'letter_reported'"),

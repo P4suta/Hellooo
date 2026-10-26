@@ -39,6 +39,6 @@ jobs:
       - name: Regenerate the conformance vectors and refuse drift
         run: |
           lake -d proofs exe vectors proofs/vectors
-          git diff --exit-code -- proofs/vectors
+          test -z "$(git status --porcelain -- proofs/vectors)" || { git status --short -- proofs/vectors; exit 1; }
       - run: mise x -- just mutation
       - run: mise x -- just e2e

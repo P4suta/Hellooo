@@ -1,13 +1,14 @@
 ---
 date: 2026-10-26
-status: Accepted
+status: Partly superseded
 ---
 
 # Localize replies by detected script and browser language
 
 ## Status
 
-Accepted.
+Partly superseded by [identify-readers-by-keyed-links-and-operators-by-cloudflare-access.md](identify-readers-by-keyed-links-and-operators-by-cloudflare-access.md): links into the service carry a key and no `lang` parameter, the page about an address reads the language stored for it and offers the switch, so the lines below about `lang` in links and about a missing settings page describe the earlier design.
+The detection at registration, the stored locale, the catalogs, and the date format stand.
 
 ## Context
 

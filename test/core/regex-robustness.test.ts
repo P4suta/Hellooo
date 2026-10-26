@@ -24,6 +24,12 @@ describe("the parsers under adversarial lengths", () => {
 		expect(result).toEqual({ ok: false, problem: "phone-number" });
 	});
 
+	it("prepare a letter with an enormous run of blanks before a word without stalling", () => {
+		// The bound cuts the run before the word, and the trim then drops the run.
+		const result = timed(() => prepareLetterText(`a${" ".repeat(LONG)}b`));
+		expect(result).toEqual({ ok: true, text: "a" });
+	});
+
 	it("prepare a letter made of one enormous word without stalling", () => {
 		const result = timed(() => prepareLetterText("a".repeat(LONG)));
 		expect(result.ok).toBe(true);

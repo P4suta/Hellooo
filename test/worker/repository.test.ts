@@ -1,7 +1,8 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { DAY_MS } from "../../src/core/duration.ts";
-import { addMillis, userId } from "../../src/core/types.ts";
+import { addMillis, type Instant, userId } from "../../src/core/types.ts";
+import { LETTER_INTERVAL_MS } from "../../src/core/weekly-cap.ts";
 import {
 	acceptLetter,
 	banWriter,
@@ -11,11 +12,15 @@ import {
 	confirmLetter,
 	createPendingUser,
 	dueLetters,
+	findDelivery,
 	findLetter,
+	findLetterByConfirmToken,
+	findPendingVerification,
 	findUserByEmail,
 	findUserById,
 	findUserByPageKey,
 	heldLetters,
+	type Letter,
 	lastAcceptedAt,
 	operatorNumbers,
 	pageKeyOf,
@@ -521,6 +526,97 @@ describe("reports", () => {
 		).first<{ user_id: string; letter_id: string }>();
 		expect(row).toEqual({ user_id: writer.id, letter_id: letter.id });
 	});
+
+	it("are recorded once per delivery, and the delivery can be read without reporting", async () => {
+		const ports = fakePorts();
+		const writer = await seedActiveUser(ports, "writer@example.com");
+		const reader = await seedActiveUser(ports, "reader@example.com", 1);
+		const letter = await seedTravelingLetter(ports, writer, T0);
+		await reserveDelivery(env.DB, {
+			letterId: letter.id,
+			recipientId: reader.id,
+			reportToken: "report-1",
+			now: T0,
+		});
+		expect(await findDelivery(env.DB, "report-1")).toEqual({
+			letterId: letter.id,
+			senderId: writer.id,
+			recipientId: reader.id,
+		});
+		expect(await findDelivery(env.DB, "unknown")).toBeNull();
+		expect(await eventKinds()).not.toContain("letter_reported");
+		await reportDelivery(env.DB, "report-1", T0);
+		await reportDelivery(env.DB, "report-1", addMillis(T0, 1));
+		expect(
+			(await eventKinds()).filter((kind) => kind === "letter_reported"),
+		).toHaveLength(1);
+	});
+});
+
+describe("the weekly slot at acceptance", () => {
+	it("accepts one letter a week for a writer and refuses the next until the week has passed", async () => {
+		const ports = fakePorts();
+		const writer = await seedActiveUser(ports, "writer@example.com");
+		const [first, second, third] = await Promise.all(
+			["first", "second", "third"].map((body) =>
+				storeLetter(env.DB, {
+					id: `letter-${body}`,
+					senderId: writer.id,
+					body,
+					status: "held",
+					now: T0,
+				}),
+			),
+		);
+		const accept = (letter: Letter, now: Instant) =>
+			acceptLetter(env.DB, {
+				letterId: letter.id,
+				senderId: writer.id,
+				deliverAfter: addMillis(now, DAY_MS),
+				moderation: "deliver",
+				now,
+			});
+		expect(await accept(must(first), T0)).toBe(true);
+		expect(
+			await accept(must(second), addMillis(T0, LETTER_INTERVAL_MS - 1)),
+		).toBe(false);
+		expect(must(await findLetter(env.DB, must(second).id)).status).toBe("held");
+		expect(await creditsOf(writer)).toBe(1);
+		expect(
+			(await eventKinds()).filter((kind) => kind === "letter_accepted"),
+		).toHaveLength(1);
+		expect(await accept(must(third), addMillis(T0, LETTER_INTERVAL_MS))).toBe(
+			true,
+		);
+		expect(await creditsOf(writer)).toBe(2);
+	});
+
+	it("reads a pending verification and a confirmable letter without changing them", async () => {
+		const pending = await createPendingUser(env.DB, {
+			id: "user-1",
+			email: address("writer@example.com"),
+			verifyToken: "verify-1",
+			pageKey: "page-1",
+			locale: "ja",
+			now: T0,
+		});
+		expect(await findPendingVerification(env.DB, "verify-1")).toEqual(pending);
+		expect(await findPendingVerification(env.DB, "nope")).toBeNull();
+		expect(must(await findUserById(env.DB, pending.id)).status).toBe("pending");
+		const letter = await storeLetter(env.DB, {
+			id: "letter-1",
+			senderId: pending.id,
+			body: "Hellooo?",
+			status: "pending_confirmation",
+			confirmToken: "confirm-1",
+			now: T0,
+		});
+		expect(await findLetterByConfirmToken(env.DB, "confirm-1")).toEqual(letter);
+		expect(await findLetterByConfirmToken(env.DB, "nope")).toBeNull();
+		expect(must(await findLetter(env.DB, letter.id)).status).toBe(
+			"pending_confirmation",
+		);
+	});
 });
 
 describe("the page key", () => {
@@ -574,24 +670,9 @@ describe("the letters waiting for the model", () => {
 			now: T0,
 		});
 		expect(await reportedLetters(env.DB)).toEqual([]);
-		await reportDelivery(env.DB, "report-1", T0);
 		await reportDelivery(env.DB, "report-2", T0);
 		await reportDelivery(env.DB, "report-2", addMillis(T0, 1));
-		expect(
-			(await reportedLetters(env.DB)).map(({ letter, reports }) => [
-				letter.body,
-				reports,
-			]),
-		).toEqual([
-			["second", 2],
-			["first", 1],
-		]);
-
-		await closeReports(env.DB, second.id, addMillis(T0, 2));
-		expect(
-			(await reportedLetters(env.DB)).map(({ letter }) => letter.body),
-		).toEqual(["first"]);
-		await reportDelivery(env.DB, "report-2", addMillis(T0, 3));
+		await reportDelivery(env.DB, "report-1", addMillis(T0, 2));
 		expect(
 			(await reportedLetters(env.DB)).map(({ letter, reports }) => [
 				letter.body,
@@ -602,10 +683,18 @@ describe("the letters waiting for the model", () => {
 			["second", 1],
 		]);
 
-		await banWriter(env.DB, writer.id, addMillis(T0, 4));
+		await closeReports(env.DB, second.id, addMillis(T0, 2));
 		expect(
 			(await reportedLetters(env.DB)).map(({ letter }) => letter.body),
-		).toEqual(["second"]);
+		).toEqual(["first"]);
+		// One delivery carries one report, so the closed letter stays closed.
+		await reportDelivery(env.DB, "report-2", addMillis(T0, 3));
+		expect(
+			(await reportedLetters(env.DB)).map(({ letter }) => letter.body),
+		).toEqual(["first"]);
+
+		await banWriter(env.DB, writer.id, addMillis(T0, 4));
+		expect(await reportedLetters(env.DB)).toEqual([]);
 	});
 
 	it("bans a writer and loses the letters still held or on their way, keeping delivered ones", async () => {

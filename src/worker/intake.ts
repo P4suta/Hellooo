@@ -26,7 +26,7 @@ import {
 	verificationMail,
 } from "../core/reply-text.ts";
 import type { EmailAddress, Instant } from "../core/types.ts";
-import { admitLetter } from "./admission.ts";
+import { type AdmissionOutcome, admitLetter } from "./admission.ts";
 import { type Config, publicLink, readConfig } from "./env.ts";
 import { type Ports, productionPorts } from "./ports.ts";
 import {
@@ -261,7 +261,7 @@ async function apply(
 				outcomeMail(
 					locale,
 					config.SERVICE_NAME,
-					outcome.kind,
+					outcome,
 					publicLink(config, "you", await pageKeyOf(db, user.id)),
 				),
 			);
@@ -271,18 +271,20 @@ async function apply(
 }
 
 /** A letter the model could not be asked about is taken all the same; the writer hears of a refusal later only if there is one. */
-function outcomeMail(
+export function outcomeMail(
 	locale: Locale,
 	serviceName: string,
-	kind: "accept" | "reject-content" | "retry-later",
+	outcome: AdmissionOutcome,
 	youLink: string,
 ): Mail {
-	switch (kind) {
+	switch (outcome.kind) {
 		case "accept":
 		case "retry-later":
 			return acceptedMail(locale, serviceName, youLink);
 		case "reject-content":
 			return rejectedContentMail(locale, serviceName);
+		case "over-cap":
+			return overCapMail(locale, serviceName, outcome.nextAllowedAt);
 	}
 }
 

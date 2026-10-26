@@ -88,7 +88,7 @@ async function register(
 ): Promise<void> {
 	const message = await mail(worker, raw, from);
 	const verify = linkIn(must(message.replies[0]).text, "verify");
-	const page = await get(worker, verify);
+	const page = await get(worker, verify, { method: "POST" });
 	expect(page.status).toBe(HTTP_OK);
 	expect(must(await findUserByEmail(env.DB, address(from))).status).toBe(
 		"active",
@@ -130,7 +130,9 @@ describe("two strangers exchange letters", () => {
 		expect(await creditsOf(writer)).toBe(0);
 		expect(await creditsOf(kakite)).toBe(0);
 
-		const report = await get(worker, linkIn(toWriter.mail.text, "report"));
+		const report = await get(worker, linkIn(toWriter.mail.text, "report"), {
+			method: "POST",
+		});
 		expect(report.status).toBe(HTTP_OK);
 		expect(await report.text()).toContain(
 			inHtml(web("en").report.thanks.title),
@@ -211,7 +213,7 @@ describe("the text of a delivered letter", () => {
 		await tick(worker);
 		expect(await letterStatuses()).toEqual(["delivered", "delivered"]);
 		const toWriter = must(ports.sent.find((m) => m.to === WRITER));
-		await get(worker, linkIn(toWriter.mail.text, "report"));
+		await get(worker, linkIn(toWriter.mail.text, "report"), { method: "POST" });
 
 		ports.clock = addMillis(ports.clock, BODY_RETENTION_MS);
 		await tick(worker);
@@ -252,6 +254,7 @@ describe("a registered writer without a mail signature", () => {
 		const confirm = await get(
 			worker,
 			linkIn(must(ports.sent[0]).mail.text, "confirm"),
+			{ method: "POST" },
 		);
 		expect(confirm.status).toBe(HTTP_OK);
 		expect(await confirm.text()).toContain(
@@ -285,6 +288,7 @@ describe("a letter the moderator refuses", () => {
 		const verify = await get(
 			worker,
 			linkIn(must(first.replies[0]).text, "verify"),
+			{ method: "POST" },
 		);
 		expect(await verify.text()).toContain(
 			inHtml(web("en").verify.confirmed.next(CONFIG.LETTERS_ADDRESS)),
@@ -309,6 +313,7 @@ describe("a letter the model cannot be asked about", () => {
 		const verify = await get(
 			worker,
 			linkIn(must(first.replies[0]).text, "verify"),
+			{ method: "POST" },
 		);
 		expect(await verify.text()).toContain(
 			inHtml(web("en").verify.confirmed.traveling),

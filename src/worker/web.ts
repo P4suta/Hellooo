@@ -18,7 +18,10 @@ import {
 	banWriter,
 	closeReports,
 	confirmLetter,
+	findDelivery,
 	findLetter,
+	findLetterByConfirmToken,
+	findPendingVerification,
 	findUserById,
 	findUserByPageKey,
 	type Letter,
@@ -174,6 +177,14 @@ export function createApp(
 	});
 
 	app.get("/verify/:key", async (c) => {
+		const user = await findPendingVerification(c.env.DB, c.req.param("key"));
+		if (user === null) {
+			return answer(c, c.get("locale"), (m) => m.verify.used, HTTP_NOT_FOUND);
+		}
+		return ask(c, user.locale, (m) => m.verify.ask, html``);
+	});
+
+	app.post("/verify/:key", async (c) => {
 		const config = c.get("config");
 		const ports = c.get("ports");
 		const now = ports.now();
@@ -183,10 +194,8 @@ export function createApp(
 		}
 		let traveling = 0;
 		for (const letter of verified.waiting) {
-			if (
-				(await admitLetter(c.env.DB, ports, letter, now)).kind !==
-				"reject-content"
-			) {
+			const outcome = await admitLetter(c.env.DB, ports, letter, now);
+			if (outcome.kind === "accept" || outcome.kind === "retry-later") {
 				traveling += 1;
 			}
 		}
@@ -205,6 +214,22 @@ export function createApp(
 	});
 
 	app.get("/confirm/:key", async (c) => {
+		const letter = await findLetterByConfirmToken(c.env.DB, c.req.param("key"));
+		if (letter === null) {
+			return answer(c, c.get("locale"), (m) => m.confirm.used, HTTP_NOT_FOUND);
+		}
+		const locale =
+			(await findUserById(c.env.DB, letter.senderId))?.locale ??
+			c.get("locale");
+		return ask(
+			c,
+			locale,
+			(m) => m.confirm.ask,
+			html`<pre class="letter">${letter.body}</pre>`,
+		);
+	});
+
+	app.post("/confirm/:key", async (c) => {
 		const config = c.get("config");
 		const ports = c.get("ports");
 		const now = ports.now();
@@ -216,16 +241,17 @@ export function createApp(
 		const locale =
 			(await findUserById(c.env.DB, letter.senderId))?.locale ??
 			c.get("locale");
-		const m = messagesFor(locale).web.confirm.confirmed;
+		const m = messagesFor(locale);
+		const line =
+			outcome.kind === "reject-content"
+				? m.web.confirm.confirmed.refused
+				: outcome.kind === "over-cap"
+					? m.mail.overCap.dropped
+					: m.web.confirm.confirmed.traveling;
 		return respond(
 			c,
 			locale,
-			page(
-				locale,
-				config,
-				m.title,
-				html`<p>${outcome.kind === "reject-content" ? m.refused : m.traveling}</p>`,
-			),
+			page(locale, config, m.web.confirm.confirmed.title, html`<p>${line}</p>`),
 		);
 	});
 
@@ -254,6 +280,22 @@ export function createApp(
 	});
 
 	app.get("/report/:key", async (c) => {
+		const delivery = await findDelivery(c.env.DB, c.req.param("key"));
+		if (delivery === null) {
+			return answer(
+				c,
+				c.get("locale"),
+				(m) => m.report.unknown,
+				HTTP_NOT_FOUND,
+			);
+		}
+		const locale =
+			(await findUserById(c.env.DB, delivery.recipientId))?.locale ??
+			c.get("locale");
+		return ask(c, locale, (m) => m.report.ask, html``);
+	});
+
+	app.post("/report/:key", async (c) => {
 		const report = await reportDelivery(
 			c.env.DB,
 			c.req.param("key"),
@@ -375,6 +417,35 @@ async function you(c: Context, key: string, farewell: boolean) {
 			html`<p>${state}</p>
 ${farewell ? html`<p>${m.farewell}</p>` : ""}
 ${controls}`,
+		),
+	);
+}
+
+/**
+ * A page that asks before it acts: a title, an optional line, what the action concerns, and one button that posts to the same path.
+ * A link in a mail only ever shows this page, because mail scanners open links.
+ */
+function ask(
+	c: Context,
+	locale: Locale,
+	pick: (web: Messages["web"]) => {
+		readonly title: string;
+		readonly body?: string;
+		readonly button: string;
+	},
+	subject: Page,
+) {
+	const text = pick(messagesFor(locale).web);
+	return respond(
+		c,
+		locale,
+		page(
+			locale,
+			c.get("config"),
+			text.title,
+			html`${text.body === undefined ? "" : html`<p>${text.body}</p>`}
+${subject}
+<form method="post"><p><button>${text.button}</button></p></form>`,
 		),
 	);
 }

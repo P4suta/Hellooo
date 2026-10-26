@@ -48,6 +48,8 @@ export type Messages = {
 		};
 		readonly unknown: Titled;
 		readonly verify: {
+			/** The page a verification link opens, which asks before it acts, because mail scanners open links. */
+			readonly ask: Titled & { readonly button: string };
 			readonly used: Titled;
 			readonly confirmed: {
 				readonly title: string;
@@ -56,6 +58,8 @@ export type Messages = {
 			};
 		};
 		readonly confirm: {
+			/** The page a confirmation link opens, showing the letter and asking before it acts. */
+			readonly ask: { readonly title: string; readonly button: string };
 			readonly used: Titled;
 			readonly confirmed: {
 				readonly title: string;
@@ -72,7 +76,12 @@ export type Messages = {
 			readonly switchTo: Readonly<Record<Locale, string>>;
 			readonly stop: string;
 		};
-		readonly report: { readonly thanks: Titled; readonly unknown: Titled };
+		readonly report: {
+			/** The page a report link opens, asking before it records the report. */
+			readonly ask: Titled & { readonly button: string };
+			readonly thanks: Titled;
+			readonly unknown: Titled;
+		};
 		readonly operator: {
 			readonly title: string;
 			readonly signIn: Titled;
@@ -158,6 +167,11 @@ const en: Messages = {
 			body: "This link doesn't lead anywhere.",
 		},
 		verify: {
+			ask: {
+				title: "Is this you?",
+				body: "Confirming sends the letters from your address on their way.",
+				button: "Yes, this is me",
+			},
 			used: {
 				title: "This link was used already",
 				body: "It was opened before, or it has expired. Writing again creates a new one.",
@@ -170,6 +184,7 @@ const en: Messages = {
 			},
 		},
 		confirm: {
+			ask: { title: "Is this letter yours?", button: "Yes, send it" },
 			used: {
 				title: "This link was used already",
 				body: "The letter was confirmed or discarded before.",
@@ -191,6 +206,11 @@ const en: Messages = {
 			stop: "No more letters",
 		},
 		report: {
+			ask: {
+				title: "Report this letter?",
+				body: "The operator reads a reported letter.",
+				button: "Report it",
+			},
 			thanks: { title: "Thank you", body: "The report is received." },
 			unknown: {
 				title: "Unknown letter",
@@ -280,6 +300,11 @@ const ja: Messages = {
 			body: "このリンクは、どこにもつながっていません。",
 		},
 		verify: {
+			ask: {
+				title: "このアドレスはあなたのものですか",
+				body: "確認すると、このアドレスからの手紙が配達に出ます。",
+				button: "はい、私です",
+			},
 			used: {
 				title: "使用済みのリンクです",
 				body: "すでに開かれたか、期限が切れています。もう一度手紙を書くと、新しいリンクが届きます。",
@@ -292,6 +317,7 @@ const ja: Messages = {
 			},
 		},
 		confirm: {
+			ask: { title: "この手紙はあなたのものですか", button: "はい、送ります" },
 			used: {
 				title: "使用済みのリンクです",
 				body: "この手紙はすでに確認されたか、破棄されています。",
@@ -313,6 +339,11 @@ const ja: Messages = {
 			stop: "手紙の受け取りをやめる",
 		},
 		report: {
+			ask: {
+				title: "この手紙を通報しますか",
+				body: "通報された手紙は運営が読みます。",
+				button: "通報する",
+			},
 			thanks: { title: "ありがとうございます", body: "通報を受け取りました。" },
 			unknown: {
 				title: "手紙が見つかりません",

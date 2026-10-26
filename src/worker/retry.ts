@@ -1,8 +1,8 @@
-import { rejectedContentMail } from "../core/reply-text.ts";
 import { admitLetter } from "./admission.ts";
-import { readConfig } from "./env.ts";
+import { publicLink, readConfig } from "./env.ts";
+import { outcomeMail } from "./intake.ts";
 import { type Ports, productionPorts } from "./ports.ts";
-import { findUserById, heldLetters } from "./repository.ts";
+import { findUserById, heldLetters, pageKeyOf } from "./repository.ts";
 import { noteRefusedMail } from "./sending.ts";
 
 export const HELD_LETTERS_PER_RUN = 50;
@@ -11,12 +11,13 @@ export type RetryRun = {
 	readonly held: number;
 	readonly accepted: number;
 	readonly rejected: number;
+	readonly overCap: number;
 	readonly waiting: number;
 };
 
 /**
  * Asks the model again about the letters it could not be asked about before.
- * The writer already heard that the letter was taken, so only a refusal sends a mail.
+ * The writer already heard that the letter was taken, so only a refusal or a lost week sends a mail.
  */
 export async function retryModeration(
 	env: Env,
@@ -25,32 +26,47 @@ export async function retryModeration(
 	const config = readConfig(env);
 	const now = ports.now();
 	const held = await heldLetters(env.DB, HELD_LETTERS_PER_RUN);
-	let accepted = 0;
-	let rejected = 0;
-	let waiting = 0;
+	const run = {
+		held: held.length,
+		accepted: 0,
+		rejected: 0,
+		overCap: 0,
+		waiting: 0,
+	};
 	for (const letter of held) {
-		switch ((await admitLetter(env.DB, ports, letter, now)).kind) {
+		const outcome = await admitLetter(env.DB, ports, letter, now);
+		switch (outcome.kind) {
 			case "accept":
-				accepted += 1;
+				run.accepted += 1;
 				break;
-			case "reject-content": {
-				rejected += 1;
+			case "retry-later":
+				run.waiting += 1;
+				break;
+			case "reject-content":
+			case "over-cap": {
+				if (outcome.kind === "over-cap") {
+					run.overCap += 1;
+				} else {
+					run.rejected += 1;
+				}
 				const writer = await findUserById(env.DB, letter.senderId);
 				if (writer !== null) {
-					const outcome = await ports.send({
+					const sent = await ports.send({
 						to: writer.email,
-						mail: rejectedContentMail(writer.locale, config.SERVICE_NAME),
+						mail: outcomeMail(
+							writer.locale,
+							config.SERVICE_NAME,
+							outcome,
+							publicLink(config, "you", await pageKeyOf(env.DB, writer.id)),
+						),
 					});
-					if (outcome.kind !== "sent") {
-						await noteRefusedMail(env.DB, writer.id, outcome, "rejection", now);
+					if (sent.kind !== "sent") {
+						await noteRefusedMail(env.DB, writer.id, sent, "rejection", now);
 					}
 				}
 				break;
 			}
-			case "retry-later":
-				waiting += 1;
-				break;
 		}
 	}
-	return { held: held.length, accepted, rejected, waiting };
+	return run;
 }

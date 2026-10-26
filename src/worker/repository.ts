@@ -18,6 +18,7 @@ import {
 	type UserStatus,
 	userId,
 } from "../core/types.ts";
+import { LETTER_INTERVAL_MS } from "../core/weekly-cap.ts";
 
 export type EventKind =
 	| "mail_ignored"
@@ -358,30 +359,61 @@ export type Acceptance = {
 	readonly now: Instant;
 };
 
-/** Marks the letter traveling and grants the sender one credit in one transaction. */
+/**
+ * Marks the letter traveling and grants the sender one credit in one transaction, and only while the sender has no other letter accepted within the week.
+ * The cap is checked again here because several letters can wait for their links or for the model at once; false means the letter lost that race.
+ */
 export async function acceptLetter(
 	db: D1Database,
 	acceptance: Acceptance,
+): Promise<boolean> {
+	const accepted =
+		"EXISTS (SELECT 1 FROM letters WHERE id = ?1 AND status = 'traveling' AND accepted_at = ?2)";
+	const [update] = await db.batch([
+		db
+			.prepare(
+				"UPDATE letters SET status = 'traveling', accepted_at = ?2, deliver_after = ?3, moderation = ?4, confirm_token = NULL WHERE id = ?1 AND status IN ('pending_verification', 'pending_confirmation', 'held') AND NOT EXISTS (SELECT 1 FROM letters o WHERE o.sender_id = ?5 AND o.id != ?1 AND o.accepted_at > ?2 - ?6)",
+			)
+			.bind(
+				acceptance.letterId,
+				acceptance.now,
+				acceptance.deliverAfter,
+				acceptance.moderation,
+				acceptance.senderId,
+				LETTER_INTERVAL_MS,
+			),
+		db
+			.prepare(
+				`UPDATE users SET credits = credits + 1 WHERE id = ?3 AND ${accepted}`,
+			)
+			.bind(acceptance.letterId, acceptance.now, acceptance.senderId),
+		db
+			.prepare(
+				`INSERT INTO events (kind, user_id, letter_id, detail, created_at) SELECT 'letter_accepted', ?3, ?1, NULL, ?2 WHERE ${accepted}`,
+			)
+			.bind(acceptance.letterId, acceptance.now, acceptance.senderId),
+	]);
+	return (update?.meta.changes ?? 0) === 1;
+}
+
+/** Drops a letter that lost the race for its sender's weekly slot: it is lost, its link stops working, and the event names the cap. */
+export async function dropOverCap(
+	db: D1Database,
+	id: LetterId,
+	senderId: UserId,
+	now: Instant,
 ): Promise<void> {
 	await db.batch([
 		db
 			.prepare(
-				"UPDATE letters SET status = 'traveling', accepted_at = ?, deliver_after = ?, moderation = ?, confirm_token = NULL WHERE id = ?",
+				"UPDATE letters SET status = 'lost', confirm_token = NULL WHERE id = ?",
 			)
-			.bind(
-				acceptance.now,
-				acceptance.deliverAfter,
-				acceptance.moderation,
-				acceptance.letterId,
-			),
-		db
-			.prepare("UPDATE users SET credits = credits + 1 WHERE id = ?")
-			.bind(acceptance.senderId),
+			.bind(id),
 		eventStatement(db, {
-			kind: "letter_accepted",
-			userId: acceptance.senderId,
-			letterId: acceptance.letterId,
-			now: acceptance.now,
+			kind: "letter_over_cap",
+			userId: senderId,
+			letterId: id,
+			now,
 		}),
 	]);
 }
@@ -407,6 +439,34 @@ export async function settleLetter(
 			now,
 		}),
 	]);
+}
+
+/** The pending person a verification link names, read without changing anything, so a page can ask before it acts. */
+export async function findPendingVerification(
+	db: D1Database,
+	verifyToken: string,
+): Promise<User | null> {
+	const row = await db
+		.prepare(
+			`SELECT ${USER_COLUMNS} FROM users WHERE verify_token = ? AND status = 'pending'`,
+		)
+		.bind(verifyToken)
+		.first();
+	return row === null ? null : toUser(UserRowSchema.parse(row));
+}
+
+/** The letter a confirmation link names, read without changing anything, so a page can show it and ask before it acts. */
+export async function findLetterByConfirmToken(
+	db: D1Database,
+	confirmToken: string,
+): Promise<Letter | null> {
+	const row = await db
+		.prepare(
+			`SELECT ${LETTER_COLUMNS} FROM letters WHERE confirm_token = ? AND status = 'pending_confirmation'`,
+		)
+		.bind(confirmToken)
+		.first();
+	return row === null ? null : toLetter(LetterRowSchema.parse(row));
 }
 
 /** Activates the user who holds this verification token and returns them with their waiting letters. */
@@ -514,11 +574,10 @@ export type Report = {
 	readonly recipientId: UserId;
 };
 
-/** Records a report against the delivered letter behind this report token, naming its writer and its reader. */
-export async function reportDelivery(
+/** The delivered letter a report token names, with its writer and its reader, read without recording anything. */
+export async function findDelivery(
 	db: D1Database,
 	reportToken: string,
-	now: Instant,
 ): Promise<Report | null> {
 	const row = await db
 		.prepare(
@@ -536,17 +595,32 @@ export async function reportDelivery(
 			recipient_id: z.string().min(1),
 		})
 		.parse(row);
-	const report: Report = {
+	return {
 		letterId: stored(letterId(parsed.id), "letter id"),
 		senderId: stored(userId(parsed.sender_id), "user id"),
 		recipientId: stored(userId(parsed.recipient_id), "user id"),
 	};
-	await recordEvent(db, {
-		kind: "letter_reported",
-		userId: report.senderId,
-		letterId: report.letterId,
-		now,
-	});
+}
+
+/**
+ * Records a report against the delivered letter behind this report token, naming its writer and its reader.
+ * One delivery carries at most one report, so opening the link again changes nothing.
+ */
+export async function reportDelivery(
+	db: D1Database,
+	reportToken: string,
+	now: Instant,
+): Promise<Report | null> {
+	const report = await findDelivery(db, reportToken);
+	if (report === null) {
+		return null;
+	}
+	await db
+		.prepare(
+			"INSERT INTO events (kind, user_id, letter_id, detail, created_at) SELECT 'letter_reported', ?1, ?2, NULL, ?3 WHERE NOT EXISTS (SELECT 1 FROM events WHERE letter_id = ?2 AND kind = 'letter_reported')",
+		)
+		.bind(report.senderId, report.letterId, now)
+		.run();
 	return report;
 }
 

@@ -133,15 +133,18 @@ async function apply(world: World, op: Operation, now: number): Promise<void> {
 				status: "held",
 				now: addMillis(T0, now),
 			});
-			await acceptLetter(env.DB, {
+			// A second letter within the week loses the race for the slot and earns nothing, in the model as in the database.
+			const accepted = await acceptLetter(env.DB, {
 				letterId: letter.id,
 				senderId: id,
 				deliverAfter: addMillis(T0, now + DAY_MS),
 				moderation: "deliver",
 				now: addMillis(T0, now),
 			});
-			world.letters.get(op.who)?.push(letter);
-			world.ledger = recordAccepted(world.ledger, id);
+			if (accepted) {
+				world.letters.get(op.who)?.push(letter);
+				world.ledger = recordAccepted(world.ledger, id);
+			}
 			return;
 		}
 		case "reserve": {

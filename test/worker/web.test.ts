@@ -150,7 +150,7 @@ describe("verifying an address", () => {
 			status: "pending_verification",
 			now: T0,
 		});
-		const response = await app.request("/verify/verify-1", {}, env);
+		const response = await app.request("/verify/verify-1", post(), env);
 		expect(response.status).toBe(HTTP_OK);
 		expect(await response.text()).toContain(
 			inHtml(web("en").verify.confirmed.traveling),
@@ -162,7 +162,7 @@ describe("verifying an address", () => {
 		);
 		expect(ports.moderated).toEqual(["Hellooo?"]);
 
-		const again = await app.request("/verify/verify-1", {}, env);
+		const again = await app.request("/verify/verify-1", post(), env);
 		expect(again.status).toBe(HTTP_NOT_FOUND);
 		expect(await again.text()).toContain(inHtml(web("en").verify.used.title));
 	});
@@ -178,9 +178,26 @@ describe("verifying an address", () => {
 			locale: "ja",
 			now: T0,
 		});
-		const response = await app.request(
+		const asked = await app.request(
 			"/verify/verify-1",
 			{ headers: { "Accept-Language": "en" } },
+			env,
+		);
+		expect(asked.status).toBe(HTTP_OK);
+		expect(asked.headers.get("content-language")).toBe("ja");
+		const askedBody = await asked.text();
+		expect(askedBody).toContain(
+			`<h1>${inHtml(web("ja").verify.ask.title)}</h1>`,
+		);
+		expect(askedBody).toContain(
+			`<form method="post"><p><button>${inHtml(web("ja").verify.ask.button)}</button></p></form>`,
+		);
+		expect(must(await findUserByEmail(env.DB, address(WRITER))).status).toBe(
+			"pending",
+		);
+		const response = await app.request(
+			"/verify/verify-1",
+			post(undefined, { "Accept-Language": "en" }),
 			env,
 		);
 		expect(response.status).toBe(HTTP_OK);
@@ -211,7 +228,7 @@ describe("verifying an address", () => {
 			status: "pending_verification",
 			now: T0,
 		});
-		const response = await app.request("/verify/verify-1", {}, env);
+		const response = await app.request("/verify/verify-1", post(), env);
 		expect(await response.text()).toContain(
 			inHtml(web("en").verify.confirmed.traveling),
 		);
@@ -244,7 +261,16 @@ describe("confirming a letter", () => {
 			confirmToken: "confirm-1",
 			now: T0,
 		});
-		const response = await app.request("/confirm/confirm-1", {}, env);
+		const asked = await app.request("/confirm/confirm-1", {}, env);
+		expect(asked.status).toBe(HTTP_OK);
+		expect(asked.headers.get("content-language")).toBe("ja");
+		const askedBody = await asked.text();
+		expect(askedBody).toContain(
+			`<h1>${inHtml(web("ja").confirm.ask.title)}</h1>`,
+		);
+		expect(askedBody).toContain('<pre class="letter">Hellooo?</pre>');
+		expect(await letterStatuses()).toEqual(["pending_confirmation"]);
+		const response = await app.request("/confirm/confirm-1", post(), env);
 		expect(response.status).toBe(HTTP_OK);
 		expect(response.headers.get("content-language")).toBe("ja");
 		expect(await response.text()).toContain(
@@ -252,7 +278,7 @@ describe("confirming a letter", () => {
 		);
 		expect(await letterStatuses()).toEqual(["traveling"]);
 		expect(await creditsOf(writer)).toBe(1);
-		const again = await app.request("/confirm/confirm-1", {}, env);
+		const again = await app.request("/confirm/confirm-1", post(), env);
 		expect(again.status).toBe(HTTP_NOT_FOUND);
 		expect(await again.text()).toContain(inHtml(web("en").confirm.used.title));
 	});
@@ -269,7 +295,7 @@ describe("confirming a letter", () => {
 			confirmToken: "confirm-1",
 			now: T0,
 		});
-		const response = await app.request("/confirm/confirm-1", {}, env);
+		const response = await app.request("/confirm/confirm-1", post(), env);
 		expect(response.status).toBe(HTTP_OK);
 		expect(await response.text()).toContain(
 			inHtml(web("en").confirm.confirmed.refused),
@@ -425,7 +451,7 @@ describe("the page about an address", () => {
 		expect(must(await findUserByEmail(env.DB, user.email)).status).toBe(
 			"unsubscribed",
 		);
-		expect((await app.request("/verify/verify-1", {}, env)).status).toBe(
+		expect((await app.request("/verify/verify-1", post(), env)).status).toBe(
 			HTTP_NOT_FOUND,
 		);
 	});
@@ -487,13 +513,20 @@ describe("reporting a letter", () => {
 			reportToken: "report-1",
 			now: T0,
 		});
-		const reported = await app.request("/report/report-1", {}, env);
+		const asked = await app.request("/report/report-1", {}, env);
+		expect(asked.status).toBe(HTTP_OK);
+		expect(asked.headers.get("content-language")).toBe("ja");
+		expect(await asked.text()).toContain(
+			`<h1>${inHtml(web("ja").report.ask.title)}</h1>`,
+		);
+		expect(await eventKinds()).not.toContain("letter_reported");
+		const reported = await app.request("/report/report-1", post(), env);
 		expect(reported.status).toBe(HTTP_OK);
 		expect(reported.headers.get("content-language")).toBe("ja");
 		expect(await reported.text()).toContain(
 			inHtml(web("ja").report.thanks.title),
 		);
-		expect((await app.request("/report/report-1", {}, env)).status).toBe(
+		expect((await app.request("/report/report-1", post(), env)).status).toBe(
 			HTTP_OK,
 		);
 		const unknown = await app.request("/report/unknown", {}, env);
@@ -504,7 +537,7 @@ describe("reporting a letter", () => {
 		expect((await app.request("/report", {}, env)).status).toBe(HTTP_NOT_FOUND);
 		expect(
 			(await eventKinds()).filter((kind) => kind === "letter_reported"),
-		).toHaveLength(2);
+		).toHaveLength(1);
 	});
 });
 
@@ -618,7 +651,7 @@ describe("the operator's page", () => {
 			await app.request("/admin", { headers: AS_OPERATOR }, env)
 		).text();
 		expect(listed).toContain(inHtml(letter.body));
-		expect(listed).toContain(inHtml(web("en").operator.reports("2")));
+		expect(listed).toContain(inHtml(web("en").operator.reports("1")));
 		expect(listed).toContain(`formaction="/admin/letters/${letter.id}/close"`);
 		expect(listed).toContain(`formaction="/admin/writers/${writer.id}/ban"`);
 
@@ -632,11 +665,11 @@ describe("the operator's page", () => {
 			await (await app.request("/admin", { headers: AS_OPERATOR }, env)).text(),
 		).toContain(inHtml(web("en").operator.nothingReported));
 
+		// One delivery carries one report, so the same link cannot reopen a closed one.
 		await reportDelivery(env.DB, "report-1", addMillis(T0, 1));
-		const reopened = await (
-			await app.request("/admin", { headers: AS_OPERATOR }, env)
-		).text();
-		expect(reopened).toContain(inHtml(web("en").operator.reports("1")));
+		expect(
+			await (await app.request("/admin", { headers: AS_OPERATOR }, env)).text(),
+		).toContain(inHtml(web("en").operator.nothingReported));
 
 		const banned = await app.request(
 			`/admin/writers/${writer.id}/ban`,

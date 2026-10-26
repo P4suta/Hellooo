@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import type { webcrypto } from "node:crypto";
+import { rm } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { sign } from "hono/jwt";
 import { MODERATION_QUESTIONS } from "../../src/core/moderation-verdict.ts";
@@ -208,6 +209,8 @@ async function waitUntilReady(): Promise<void> {
 
 /** Starts the stub and `cf dev --mode e2e` on their own ports and state directory, and returns the function that stops both. */
 export default async function setup(): Promise<() => Promise<void>> {
+	// Every run starts from an empty database, so a letter accepted in an earlier run never takes a writer's weekly slot.
+	await rm(STATE_DIR, { recursive: true, force: true });
 	const stub = await startStub();
 	const env: NodeJS.ProcessEnv = {
 		...process.env,

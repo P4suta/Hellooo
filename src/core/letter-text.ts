@@ -11,8 +11,8 @@ export type LetterText =
 	| { readonly ok: false; readonly problem: LetterTextProblem };
 
 const LINE_BREAK = /\r\n?/g;
-const TRAILING_BLANKS = /[ \t]+$/gm;
 const BLANK_RUN = /\n{3,}/g;
+const BLANK = new Set([" ", "\t"]);
 /** The last letter of a scheme followed by `://`, or a `www.` host; each predicate tests presence, so it needs no repetition. */
 const SCHEME_URL = /[a-z]:\/\//i;
 const WWW_HOST = /\bwww\./i;
@@ -26,12 +26,25 @@ const PROBLEMS: readonly (readonly [RegExp, LetterTextProblem])[] = [
 	[PHONE_NUMBER, "phone-number"],
 ];
 
+/** Drops the blanks at the end of every line in one pass; a regular expression anchored at the line end would rescan a long run of blanks for each one. */
+export function withoutTrailingBlanks(text: string): string {
+	return text
+		.split("\n")
+		.map((line) => {
+			// `charAt(-1)` is the empty string, which is no blank, so the loop stops at the line's start on its own.
+			let end = line.length;
+			while (BLANK.has(line.charAt(end - 1))) {
+				end -= 1;
+			}
+			return line.slice(0, end);
+		})
+		.join("\n");
+}
+
 /** Normalizes a plain-text body, bounds it by code points, and refuses contact details that would leak identities. */
 export function prepareLetterText(raw: string): LetterText {
 	const text = [
-		...raw
-			.replace(LINE_BREAK, "\n")
-			.replace(TRAILING_BLANKS, "")
+		...withoutTrailingBlanks(raw.replace(LINE_BREAK, "\n"))
 			.replace(BLANK_RUN, "\n\n")
 			.trim(),
 	]

@@ -28,6 +28,7 @@ describe("asking the model again", () => {
 			held: 1,
 			accepted: 1,
 			rejected: 0,
+			overCap: 0,
 			waiting: 0,
 		});
 		expect(must(await findLetter(env.DB, held.id)).status).toBe("traveling");
@@ -44,6 +45,7 @@ describe("asking the model again", () => {
 			held: 1,
 			accepted: 0,
 			rejected: 1,
+			overCap: 0,
 			waiting: 0,
 		});
 		expect(must(await findLetter(env.DB, held.id)).status).toBe("rejected");
@@ -64,6 +66,7 @@ describe("asking the model again", () => {
 			held: 1,
 			accepted: 0,
 			rejected: 1,
+			overCap: 0,
 			waiting: 0,
 		});
 		expect(must(await findLetter(env.DB, held.id)).status).toBe("rejected");
@@ -74,6 +77,26 @@ describe("asking the model again", () => {
 		expect(await eventKinds()).toContain("user_suppressed");
 	});
 
+	it("drops a waiting letter whose writer's week is already taken, and tells them when to write again", async () => {
+		const ports = fakePorts();
+		const writer = await seedActiveUser(ports, "writer@example.com");
+		await seedHeldLetter(ports, writer, "first");
+		await seedHeldLetter(ports, writer, "second");
+		expect(await retryModeration(env, ports)).toEqual({
+			held: 2,
+			accepted: 1,
+			rejected: 0,
+			overCap: 1,
+			waiting: 0,
+		});
+		expect(await creditsOf(writer)).toBe(1);
+		expect(ports.sent).toHaveLength(1);
+		expect(ports.sent[0]?.to).toBe(writer.email);
+		expect(ports.sent[0]?.mail.subject).toBe(
+			mailSubject(CONFIG.SERVICE_NAME, "en", (m) => m.overCap),
+		);
+	});
+
 	it("leaves a letter waiting while the model still cannot be asked", async () => {
 		const ports = fakePorts({ verdict: null });
 		const writer = await seedActiveUser(ports, "writer@example.com");
@@ -82,6 +105,7 @@ describe("asking the model again", () => {
 			held: 1,
 			accepted: 0,
 			rejected: 0,
+			overCap: 0,
 			waiting: 1,
 		});
 		expect(must(await findLetter(env.DB, held.id)).status).toBe("held");
@@ -105,6 +129,7 @@ describe("asking the model again", () => {
 			held: 0,
 			accepted: 0,
 			rejected: 0,
+			overCap: 0,
 			waiting: 0,
 		});
 	});
