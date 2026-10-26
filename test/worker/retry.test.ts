@@ -37,6 +37,24 @@ describe("asking the model again", () => {
 		expect(await eventKinds()).toContain("letter_accepted");
 	});
 
+	it("stops asking after the first silence and leaves the rest of the batch for the next run", async () => {
+		const ports = fakePorts({ verdict: null });
+		const writer = await seedActiveUser(ports, "writer@example.com");
+		const other = await seedActiveUser(ports, "other@example.com");
+		await seedHeldLetter(ports, writer, "first");
+		await seedHeldLetter(ports, other, "second");
+		expect(await retryModeration(env, ports)).toEqual({
+			held: 2,
+			accepted: 0,
+			rejected: 0,
+			overCap: 0,
+			waiting: 2,
+		});
+		expect(ports.moderated).toHaveLength(1);
+		ports.verdict = "deliver";
+		expect((await retryModeration(env, ports)).accepted).toBe(2);
+	});
+
 	it("refuses a waiting letter and tells the writer in their language", async () => {
 		const ports = fakePorts({ verdict: "reject" });
 		const writer = await seedActiveUser(ports, "kakite@example.jp", 0, "ja");

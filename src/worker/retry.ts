@@ -33,14 +33,16 @@ export async function retryModeration(
 		overCap: 0,
 		waiting: 0,
 	};
-	for (const letter of held) {
+	for (const [index, letter] of held.entries()) {
 		const outcome = await admitLetter(env.DB, ports, letter, now);
+		if (outcome.kind === "retry-later") {
+			// The model gave no answer, and the rest of the batch would wait out the same silence; they stay held for the next run.
+			run.waiting += held.length - index;
+			break;
+		}
 		switch (outcome.kind) {
 			case "accept":
 				run.accepted += 1;
-				break;
-			case "retry-later":
-				run.waiting += 1;
 				break;
 			case "reject-content":
 			case "over-cap": {

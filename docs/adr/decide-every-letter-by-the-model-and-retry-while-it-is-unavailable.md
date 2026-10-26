@@ -29,6 +29,7 @@ The owner found a queue of unreported letters senseless and the explanation of i
 - A writer never learns that the model was away, and a letter waits at most as long as the model is away plus one run.
 - Letters the model doubts now go out or are refused by the single threshold, so the threshold carries the whole judgment and the reports from readers remain the correction.
 - The operator's work is reports alone.
+- A run stops asking at the first letter the model leaves unanswered, so an outage costs one timeout per run rather than one per held letter, and delivery and erasure still run.
 
 ## Alternatives rejected
 
