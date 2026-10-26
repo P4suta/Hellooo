@@ -48,6 +48,7 @@ export default defineConfig(({ mode }) => ({
 		env: {
 			SERVICE_NAME: bindings.text("Hellooo"),
 			OPERATOR_NAME: bindings.text("the Hellooo operator"),
+			LEGAL_JURISDICTION: bindings.text("JP"),
 			LETTERS_ADDRESS: bindings.text(LETTERS_ADDRESS),
 			NOTICES_ADDRESS: bindings.text(NOTICES_ADDRESS),
 			PUBLIC_BASE_URL: bindings.text(PUBLIC_BASE_URL),

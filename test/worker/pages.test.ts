@@ -14,6 +14,8 @@ const PATHS = [
 	"/you/nope",
 	"/stop/nope",
 	"/report/nope",
+	"/terms",
+	"/privacy",
 	"/admin",
 	"/nowhere",
 ];

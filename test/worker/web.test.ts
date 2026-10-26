@@ -1,5 +1,12 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
+import {
+	type LegalFacts,
+	privacyPage,
+	RETENTION_DAYS,
+	termsPage,
+} from "../../src/core/legal.ts";
+import { regionName } from "../../src/core/locale.ts";
 import { addMillis } from "../../src/core/types.ts";
 import { publicPath } from "../../src/worker/env.ts";
 import {
@@ -41,6 +48,13 @@ const READER = "reader@example.com";
 const WRITER = "writer@example.com";
 const FORM = { "content-type": "application/x-www-form-urlencoded" };
 const AS_OPERATOR = { "cf-access-jwt-assertion": OPERATOR_TOKEN };
+/** The facts of the test Worker, so a legal page's expected title comes from the same catalog the page renders. */
+const FACTS: LegalFacts = {
+	service: CONFIG.SERVICE_NAME,
+	operator: CONFIG.OPERATOR_NAME,
+	contact: CONFIG.NOTICES_ADDRESS,
+	jurisdiction: CONFIG.LEGAL_JURISDICTION,
+};
 
 function post(
 	body?: string,
@@ -69,6 +83,8 @@ describe("the front page", () => {
 			inHtml(web("en").front.operated(CONFIG.OPERATOR_NAME)),
 		);
 		expect(body).toContain(`mailto:${CONFIG.NOTICES_ADDRESS}`);
+		expect(body).toContain(`<a href="/terms">${web("en").front.terms}</a>`);
+		expect(body).toContain(`<a href="/privacy">${web("en").front.privacy}</a>`);
 		expect(body.match(/<section /g)).toHaveLength(3);
 		expect(body.match(/class="next"/g)).toHaveLength(2);
 		expect(body).toContain('<link rel="icon" href="data:image/svg+xml,');
@@ -128,6 +144,37 @@ describe("the front page", () => {
 		);
 		expect(response.status).toBe(HTTP_NOT_FOUND);
 		expect(await response.text()).toContain(inHtml(web("ja").unknown.title));
+	});
+});
+
+describe("the terms and the privacy notice", () => {
+	it("show the configured facts in the visitor's language", async () => {
+		const app = createApp(() => fakePorts());
+		const terms = await app.request("/terms", {}, env);
+		expect(terms.status).toBe(HTTP_OK);
+		const termsBody = await terms.text();
+		expect(termsBody).toContain(
+			`<h1>${inHtml(termsPage("en", FACTS).title)}</h1>`,
+		);
+		expect(termsBody).toContain(
+			inHtml(regionName("en", CONFIG.LEGAL_JURISDICTION)),
+		);
+		expect(termsBody).toContain(inHtml(CONFIG.NOTICES_ADDRESS));
+		const privacy = await app.request(
+			"/privacy",
+			{ headers: { "Accept-Language": "ja" } },
+			env,
+		);
+		expect(privacy.status).toBe(HTTP_OK);
+		const privacyBody = await privacy.text();
+		expect(privacyBody).toContain(
+			`<h1>${inHtml(privacyPage("ja", FACTS).title)}</h1>`,
+		);
+		expect(privacyBody).toContain(inHtml(CONFIG.OPERATOR_NAME));
+		expect(privacyBody).toContain(String(RETENTION_DAYS));
+		expect(privacyBody.match(/<h2>/g)?.length).toBe(
+			privacyPage("ja", FACTS).sections.length,
+		);
 	});
 });
 

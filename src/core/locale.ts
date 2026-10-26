@@ -86,6 +86,15 @@ export function localeFromContentLanguage(
 	return localeFromLanguageTag(before(header, ","));
 }
 
+/** The name of a region in the reader's language, from its ISO 3166-1 alpha-2 code; the code itself when the runtime has no name for it. */
+export function regionName(locale: Locale, code: string): string {
+	return (
+		new Intl.DisplayNames(locale, { type: "region", fallback: "code" }).of(
+			code,
+		) ?? code
+	);
+}
+
 /** A calendar date in the reader's language, read in UTC so every reader sees the same day. */
 export function formatDate(locale: Locale, at: Instant): string {
 	return new Intl.DateTimeFormat(locale, {

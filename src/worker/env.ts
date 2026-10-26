@@ -14,6 +14,8 @@ const Address = z.string().transform((raw, ctx) => {
 const ConfigSchema = z.object({
 	SERVICE_NAME: z.string().min(1),
 	OPERATOR_NAME: z.string().min(1),
+	/** The region whose law the terms name, as an ISO 3166-1 alpha-2 code that each language spells out itself. */
+	LEGAL_JURISDICTION: z.string().regex(/^[A-Z]{2}$/),
 	LETTERS_ADDRESS: Address,
 	NOTICES_ADDRESS: Address,
 	PUBLIC_BASE_URL: z.url(),
