@@ -117,6 +117,7 @@ const en: LegalTexts = {
 				lines: [
 					`The text of a letter is erased ${RETENTION_DAYS} days after it is delivered or refused, unless a report on it is open.`,
 					`A letter that is never confirmed or never accepted loses its text ${RETENTION_DAYS} days after it arrived.`,
+					"A letter still waiting for its decision or still on its way keeps its text until it is delivered or refused.",
 					"Your address and the record of what happened stay while letters can reach you, and afterwards as a stopped address, so that nothing reaches it again.",
 					`Write to ${contact} to have your address and your letters removed.`,
 				],
@@ -224,6 +225,7 @@ const ja: LegalTexts = {
 				lines: [
 					`手紙の本文は、配達または却下から ${RETENTION_DAYS} 日後に消します。ただし通報が開いている間は残します。`,
 					`確認されなかった手紙や、受理されなかった手紙の本文は、届いてから ${RETENTION_DAYS} 日後に消します。`,
+					"判定を待っている手紙と、配達までの途中にある手紙の本文は、配達または却下まで残します。",
 					"あなたのアドレスと記録は、手紙を受け取れる間と、やめたあとも二度と届かないようにするために残ります。",
 					`アドレスと手紙の削除は ${contact} へ書いてください。`,
 				],
