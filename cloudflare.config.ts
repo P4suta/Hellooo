@@ -19,6 +19,11 @@ const ACCESS_AUD =
 // `cf dev` keys its local D1 database by this id, and `just migrate-local` applies ./migrations to the same id.
 // Production omits the id, so the first deploy provisions the database by name.
 const LOCAL_DATABASE_ID = "00000000-0000-4000-8000-000000000001";
+// The modes that publish to the real domain and database: the open service, and the closed one that `just close` deploys while the service is off.
+const LIVE_MODES: ReadonlySet<string | undefined> = new Set([
+	"production",
+	"closed",
+]);
 
 export default defineConfig(({ mode }) => ({
 	worker: {
@@ -28,7 +33,7 @@ export default defineConfig(({ mode }) => ({
 		compatibilityFlags: ["global_fetch_strictly_public"],
 		entrypoint: "./src/worker/index.ts",
 		// The pages' host is a custom domain of the Worker, which `cf deploy` attaches with its DNS record and certificate; local modes serve on the dev origin.
-		...(mode === "production"
+		...(LIVE_MODES.has(mode)
 			? { domains: [new URL(PUBLIC_BASE_URL).host] }
 			: {}),
 		// Letter bodies and addresses never enter logs, so only redacted invocation metadata is kept.
@@ -48,6 +53,7 @@ export default defineConfig(({ mode }) => ({
 		env: {
 			SERVICE_NAME: bindings.text("Hellooo"),
 			OPERATOR_NAME: bindings.text("the Hellooo operator"),
+			SERVICE_CLOSED: bindings.text(mode === "closed" ? "true" : "false"),
 			LEGAL_JURISDICTION: bindings.text("JP"),
 			LETTERS_ADDRESS: bindings.text(LETTERS_ADDRESS),
 			NOTICES_ADDRESS: bindings.text(NOTICES_ADDRESS),
@@ -64,7 +70,7 @@ export default defineConfig(({ mode }) => ({
 			TYPESAFE_API_KEY: bindings.secret(),
 			// Users, letters, deliveries, and events.
 			DB: bindings.d1(
-				mode === "production"
+				LIVE_MODES.has(mode)
 					? { name: "hellooo" }
 					: { name: "hellooo", id: LOCAL_DATABASE_ID },
 			),

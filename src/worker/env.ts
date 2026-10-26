@@ -32,6 +32,10 @@ const Address = z.string().transform((raw, ctx) => {
 const ConfigSchema = z.object({
 	SERVICE_NAME: z.string().min(1),
 	OPERATOR_NAME: z.string().min(1),
+	/** "true" closes the service: every page answers with a notice, mail is ignored, and the scheduled run skips; a deploy in the `closed` mode sets it. */
+	SERVICE_CLOSED: z
+		.enum(["true", "false"])
+		.transform((value) => value === "true"),
 	/** The region whose law the terms name, as an ISO 3166-1 alpha-2 code that each language spells out itself. */
 	LEGAL_JURISDICTION: z
 		.string()

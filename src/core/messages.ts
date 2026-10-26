@@ -44,6 +44,8 @@ export type Messages = {
 			readonly only: string;
 			readonly next: string;
 			readonly operated: (operator: string) => string;
+			/** The one line every page shows while the service is closed. */
+			readonly closed: string;
 			readonly contact: string;
 			/** The link labels of the terms and the privacy notice at the foot of the front page. */
 			readonly terms: string;
@@ -163,6 +165,7 @@ const en: Messages = {
 			only: "By writing a letter, you may receive one too.",
 			next: "Next",
 			operated: (operator) => `Operated by ${operator}.`,
+			closed: "Hellooo is not open yet.",
 			contact: "Questions and reports:",
 			terms: "Terms",
 			privacy: "Privacy",
@@ -298,6 +301,7 @@ const ja: Messages = {
 			only: "手紙を書くことで、あなたにも手紙が届くかもしれません。",
 			next: "次へ",
 			operated: (operator) => `運営: ${operator}`,
+			closed: "Hellooo はまだ開いていません。",
 			contact: "問い合わせと通報:",
 			terms: "利用規約",
 			privacy: "プライバシー",

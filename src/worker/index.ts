@@ -1,3 +1,5 @@
+import { SUPPORTED_LOCALES } from "../core/locale.ts";
+import { messagesFor } from "../core/messages.ts";
 import { runDelivery } from "./delivery.ts";
 import { type Config, readConfig } from "./env.ts";
 import { runErasure } from "./erasure.ts";
@@ -38,16 +40,49 @@ export async function runStages(
 	}
 }
 
-/** The three handlers wired to one source of effects, so a test can replace the clock, randomness, moderator, and mail. */
+const HTTP_SERVICE_UNAVAILABLE = 503;
+
+/** The one page a closed service answers with, in both languages, so nobody registers or reads while the service is off. */
+function closedPage(): Response {
+	const lines = SUPPORTED_LOCALES.map(
+		(locale) =>
+			`<p lang="${locale}">${messagesFor(locale).web.front.closed}</p>`,
+	).join("");
+	return new Response(
+		`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Hellooo</title></head><body>${lines}</body></html>`,
+		{
+			status: HTTP_SERVICE_UNAVAILABLE,
+			headers: {
+				"Content-Type": "text/html; charset=utf-8",
+				"Cache-Control": "no-store",
+				"Retry-After": "86400",
+			},
+		},
+	);
+}
+
+/** The three handlers wired to one source of effects, so a test can replace the clock, randomness, moderator, and mail; a closed service answers nothing but its notice. */
 export function createWorker(portsFor: PortsFor = productionPorts) {
 	const app = createApp(portsFor);
 	return {
-		email: (message, env, _ctx) =>
-			handleIncomingEmail(message, env, portsFor(env, readConfig(env))),
-		scheduled: (_controller, env, ctx) => {
-			ctx.waitUntil(runScheduled(env, portsFor(env, readConfig(env))));
+		email: async (message, env, _ctx) => {
+			const config = readConfig(env);
+			if (config.SERVICE_CLOSED) {
+				return;
+			}
+			await handleIncomingEmail(message, env, portsFor(env, config));
 		},
-		fetch: app.fetch,
+		scheduled: (_controller, env, ctx) => {
+			const config = readConfig(env);
+			if (config.SERVICE_CLOSED) {
+				return;
+			}
+			ctx.waitUntil(runScheduled(env, portsFor(env, config)));
+		},
+		fetch: (request: Request, env: Env, ctx: ExecutionContext) =>
+			readConfig(env).SERVICE_CLOSED
+				? closedPage()
+				: app.fetch(request, env, ctx),
 	} satisfies ExportedHandler<Env>;
 }
 
