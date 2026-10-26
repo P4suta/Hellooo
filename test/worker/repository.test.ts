@@ -753,8 +753,25 @@ describe("the letters waiting for the model", () => {
 			(await reportedLetters(env.DB)).map(({ letter }) => letter.body),
 		).toEqual(["first"]);
 
+		const third = await seedTravelingLetter(ports, writer, T0, "third");
+		const another = await seedActiveUser(ports, "another@example.com", 1);
+		await reserveDelivery(env.DB, {
+			letterId: third.id,
+			recipientId: another.id,
+			reportToken: "report-3",
+			now: addMillis(T0, 3),
+		});
 		await banWriter(env.DB, writer.id, addMillis(T0, 4));
+		// The ban closed the open report, so the letter leaves the page and its text falls under the retention rule again.
 		expect(await reportedLetters(env.DB)).toEqual([]);
+		expect(
+			(await eventKinds()).filter((kind) => kind === "report_closed"),
+		).toHaveLength(2);
+		// A report that arrives after the ban still reaches the operator, who closes it from the page.
+		await reportDelivery(env.DB, "report-3", addMillis(T0, 5));
+		expect(
+			(await reportedLetters(env.DB)).map(({ letter }) => letter.body),
+		).toEqual(["third"]);
 	});
 
 	it("bans a writer and loses the letters still held or on their way, keeping delivered ones", async () => {

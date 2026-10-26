@@ -833,13 +833,13 @@ export type ReportedLetter = {
 	readonly reports: number;
 };
 
-/** Delivered letters with open reports, most reported first; a banned writer's letters and closed reports stay out. */
+/** Delivered letters with open reports, most reported first, whatever became of their writer; closed reports stay out. */
 export async function reportedLetters(
 	db: D1Database,
 ): Promise<ReportedLetter[]> {
 	const { results } = await db
 		.prepare(
-			`SELECT ${LETTER_COLUMNS.replaceAll(/(\w+)/g, "l.$1")}, COUNT(e.id) AS reports FROM letters l JOIN users u ON u.id = l.sender_id JOIN events e ON e.letter_id = l.id AND e.kind = 'letter_reported' WHERE u.status != 'banned' AND NOT EXISTS (SELECT 1 FROM events c WHERE c.letter_id = l.id AND c.kind = 'report_closed' AND c.id > e.id) GROUP BY l.id ORDER BY reports DESC, l.created_at, l.id`,
+			`SELECT ${LETTER_COLUMNS.replaceAll(/(\w+)/g, "l.$1")}, COUNT(e.id) AS reports FROM letters l JOIN events e ON e.letter_id = l.id AND e.kind = 'letter_reported' WHERE NOT EXISTS (SELECT 1 FROM events c WHERE c.letter_id = l.id AND c.kind = 'report_closed' AND c.id > e.id) GROUP BY l.id ORDER BY reports DESC, l.created_at, l.id`,
 		)
 		.all();
 	return z
@@ -870,6 +870,12 @@ export async function banWriter(
 				`UPDATE letters SET status = 'lost', confirm_token = NULL WHERE sender_id = ? AND status IN (${WAITING}, 'traveling')`,
 			)
 			.bind(id),
+		// The ban answers every open report on the writer's letters, so their text falls under the retention rule again instead of waiting for a closure nobody would record.
+		db
+			.prepare(
+				"INSERT INTO events (kind, user_id, letter_id, detail, created_at) SELECT 'report_closed', NULL, l.id, NULL, ?2 FROM letters l WHERE l.sender_id = ?1 AND EXISTS (SELECT 1 FROM events r WHERE r.letter_id = l.id AND r.kind = 'letter_reported' AND NOT EXISTS (SELECT 1 FROM events c WHERE c.letter_id = l.id AND c.kind = 'report_closed' AND c.id > r.id))",
+			)
+			.bind(id, now),
 		eventStatement(db, { kind: "user_banned", userId: id, now }),
 	]);
 }

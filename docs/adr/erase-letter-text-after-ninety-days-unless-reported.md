@@ -32,6 +32,7 @@ A privacy policy needs a stated retention, and the plan listed the deletion of l
 - A reader who reports a letter more than ninety days after receiving it is still heard, but the operator decides on the report count alone.
 - Addresses, credits, deliveries, and events stay, so the credit law and the weekly cap are untouched by erasure.
 - Changing the period means changing one constant and the vectors the proofs regenerate.
+- Banning a writer closes every open report on their letters, and the operator page lists open reports whatever became of the writer, so no reported text waits for a closure nobody would record.
 
 ## Alternatives rejected
 
