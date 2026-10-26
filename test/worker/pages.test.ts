@@ -30,7 +30,8 @@ describe.each(SUPPORTED_LOCALES)("every page in %s", (locale) => {
 		expect(response.headers.get("content-language")).toBe(locale);
 		expect(response.headers.get("vary")).toBe("Accept-Language");
 		expect(response.headers.get("cache-control")).toBe("no-store");
-		expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+		// Not `no-referrer`: under it a browser posts a form with `Origin: null`, which the origin check refuses.
+		expect(response.headers.get("referrer-policy")).toBe("same-origin");
 		expect(response.headers.get("x-content-type-options")).toBe("nosniff");
 		expect(response.headers.get("x-frame-options")).toBe("DENY");
 		const policy = response.headers.get("content-security-policy") ?? "";

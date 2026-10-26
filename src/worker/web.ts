@@ -53,12 +53,13 @@ const COLORS = {
 } as const;
 
 /**
- * Every page carries a key or is tiny, so nothing is cached, no referrer leaves with a key in it, and a page may load only its own inline style and its inline icon.
+ * Every page carries a key or is tiny, so nothing is cached, no referrer leaves the origin with a key in it, and a page may load only its own inline style and its inline icon.
+ * The referrer stays within the origin rather than vanishing, because a browser sends `Origin: null` on a form post under `no-referrer`, which `fromThisOrigin` rightly refuses.
  * Forms post to the same origin only, and nothing may frame a page.
  */
 const RESPONSE_HEADERS: Readonly<Record<string, string>> = {
 	"Cache-Control": "no-store",
-	"Referrer-Policy": "no-referrer",
+	"Referrer-Policy": "same-origin",
 	"X-Content-Type-Options": "nosniff",
 	"X-Frame-Options": "DENY",
 	"Content-Security-Policy":

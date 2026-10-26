@@ -30,6 +30,7 @@ The stop link already avoided this by showing a page first.
 - A person clicks once more than before, on a page that names what the click does.
 - The one-click stop of `List-Unsubscribe` stays a post from the mail client, as it was.
 - The statement that spends a verification or confirmation link moves the letter to held in the same transaction, so a failure after the click leaves the letter to the scheduled run instead of pending without a link.
+- The pages answer with `Referrer-Policy: same-origin` rather than `no-referrer`, because under `no-referrer` a browser sends `Origin: null` with a form post and the origin check would refuse the person's own click; the referrer with its key still never leaves the origin.
 
 ## Alternatives rejected
 

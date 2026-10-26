@@ -23,7 +23,7 @@ Dependencies, actions, and tool versions drift, and a hard-coded address or line
 - Renovate extends the owner's shared preset, which groups non-major updates, pins action digests, maintains the lockfile, and merges minor and patch updates after the fast gate passes.
 - Lefthook runs Biome on staged files and the type check before a commit, and the full fast gate before a push.
 - A guard test reads the addresses and the domain from `cloudflare.config.ts` and fails when any source or test file spells one of them out, so a change of address or domain is one edit; tests take copy from the message catalog and addresses from `readConfig`.
-- The web adapter sends `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and a content security policy that allows only the page's own inline style, because every page carries a token or is tiny.
+- The web adapter sends `Cache-Control: no-store`, `Referrer-Policy: same-origin`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and a content security policy that allows only the page's own inline style, because every page carries a token or is tiny.
 
 ## Consequences
 
