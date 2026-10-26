@@ -1,0 +1,49 @@
+{
+	"name": "hellooo",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Send one letter a week to a single address, and a stranger who also wrote one receives it after a journey of random length",
+	"license": "MIT OR Apache-2.0",
+	"type": "module",
+	"scripts": {
+		"dev": "cf dev",
+		"test": "vitest run",
+		"types": "cf workers types",
+		"typecheck": "cf workers types && tsc -p tsconfig.json && tsc -p tsconfig.node.json",
+		"lint": "biome check .",
+		"fix": "biome check --write .",
+		"deploy": "cf deploy",
+		"build": "cf build",
+		"e2e": "vitest run --config vitest.e2e.config.ts",
+		"mutation": "stryker run"
+	},
+	"engines": {
+		"node": ">=26"
+	},
+	"devEngines": {
+		"packageManager": {
+			"name": "pnpm",
+			"version": "12.15.0",
+			"onFail": "download"
+		}
+	},
+	"packageManager": "pnpm@12.15.0",
+	"dependencies": {
+		"hono": "^4.13.14",
+		"postal-mime": "^4.1.4",
+		"zod": "^4.6.7"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.6.3",
+		"@cloudflare/vite-plugin": "^2.0.0-beta.v.4",
+		"@cloudflare/vitest-plugin": "^1.4.7",
+		"@stryker-mutator/core": "^10.1.1",
+		"@stryker-mutator/vitest-runner": "^10.1.1",
+		"@types/node": "^26.6.5",
+		"cf": "1.0.0-beta.21",
+		"fast-check": "^4.10.2",
+		"typescript": "^7.0.2",
+		"vite": "^8.3.5",
+		"vitest": "^5.0.5"
+	}
+}

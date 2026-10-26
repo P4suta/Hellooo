@@ -1,0 +1,2 @@
+# The letter-text tests hold fixtures in scripts this project does not otherwise write.
+test/core/letter-text.test.ts dotguard-lang=off

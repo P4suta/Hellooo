@@ -1,0 +1,38 @@
+Received: from mail-sor-f41.google.com (mail-sor-f41.google.com. [209.85.220.41])
+        by mx.cloudflare.net with ESMTPS id fixture-attachment
+        for <anybody@hellooo.email>;
+        Sat, 25 Oct 2026 03:00:00 +0000
+Authentication-Results: mx.cloudflare.net; dkim=pass header.d=example.com header.s=fixture header.b=fixture; spf=pass smtp.mailfrom=example.com; dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from=example.com
+From: Attacher <attacher@example.com>
+To: anybody@hellooo.email
+Subject: With a picture
+Date: Sat, 25 Oct 2026 12:00:00 +0900
+Message-ID: <fixture-letter-with-attachment@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="fixture-boundary"
+
+--fixture-boundary
+Content-Type: multipart/alternative; boundary="fixture-alternative"
+
+--fixture-alternative
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+A letter with a picture attached.
+
+--fixture-alternative
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+<p>A letter with a <b>picture</b> attached.</p>
+
+--fixture-alternative--
+
+--fixture-boundary
+Content-Type: image/png; name="dot.png"
+Content-Disposition: attachment; filename="dot.png"
+Content-Transfer-Encoding: base64
+
+iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==
+
+--fixture-boundary--

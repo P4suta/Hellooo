@@ -1,0 +1,68 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"includes": ["**", "!pnpm-lock.yaml", "!proofs/vectors"]
+	},
+	"formatter": {
+		"enabled": true
+	},
+	"markdown": {
+		"formatter": {
+			"enabled": false
+		}
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"style": {
+				"noNonNullAssertion": "error"
+			},
+			"suspicious": {
+				"noImportCycles": "error",
+				"noConsole": {
+					"level": "error",
+					"options": {
+						"allow": ["info", "warn", "error"]
+					}
+				},
+				"noExplicitAny": "error"
+			}
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["src/core/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["*", "@*/*", "../worker/**", "../../**"],
+										"message": "src/core decides over values only: it imports nothing outside src/core, so adapters, packages, and runtime modules stay in src/worker."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		}
+	]
+}

@@ -1,0 +1,5 @@
+[{"view": "waiting", "status": "pending", "controls": true},
+ {"view": "receiving", "status": "active", "controls": true},
+ {"view": "stopped", "status": "unsubscribed", "controls": false},
+ {"view": "stopped", "status": "suppressed", "controls": false},
+ {"view": "stopped", "status": "banned", "controls": false}]

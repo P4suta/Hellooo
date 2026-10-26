@@ -1,0 +1,18 @@
+Received: from mail-sor-f41.google.com (mail-sor-f41.google.com. [209.85.220.41])
+        by mx.cloudflare.net with ESMTPS id fixture-qp
+        for <anybody@hellooo.email>;
+        Sat, 25 Oct 2026 03:00:00 +0000
+Authentication-Results: mx.cloudflare.net; dkim=pass header.d=example.jp header.s=fixture header.b=fixture; spf=pass smtp.mailfrom=example.jp; dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from=example.jp
+From: =?UTF-8?B?44GL44GN44Gm?= <qp@example.jp>
+To: anybody@hellooo.email
+Subject: =?UTF-8?Q?=E3=81=93=E3=82=93=E3=81=AB=E3=81=A1=E3=81=AF?=
+Date: Sat, 25 Oct 2026 12:00:00 +0900
+Message-ID: <fixture-letter-quoted-printable@example.jp>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+=E3=81=93=E3=82=93=E3=81=AB=E3=81=A1=E3=81=AF=E3=80=82
+=E9=81=A0=E3=81=84=E3=81=A8=E3=81=93=E3=82=8D=E3=81=8B=E3=82=89=E6=89=8B=E7=
+=B4=99=E3=82=92=E6=9B=B8=E3=81=84=E3=81=A6=E3=81=84=E3=81=BE=E3=81=99=E3=80=
+=82
