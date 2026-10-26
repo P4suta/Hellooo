@@ -122,7 +122,14 @@ describe("the front page", () => {
 			env,
 		);
 		expect(response.headers.get("content-language")).toBe("ja");
-		expect(await response.text()).toContain(inHtml(web("ja").front.anybody));
+		const body = await response.text();
+		expect(body).toContain(inHtml(web("ja").front.anybody));
+		expect(body).toContain(
+			`<a href="/terms?lang=ja">${web("ja").front.terms}</a>`,
+		);
+		expect(body).toContain(
+			`<a href="/privacy?lang=ja">${web("ja").front.privacy}</a>`,
+		);
 	});
 
 	it("falls back to English for an unknown language", async () => {

@@ -165,6 +165,8 @@ export function createApp(
 		const config = c.get("config");
 		const locale = c.get("locale");
 		const m = c.get("messages").web.front;
+		// A language chosen in the query follows the visitor to the pages the foot links to; a negotiated one needs no query.
+		const chosen = c.req.query("lang") === undefined ? "" : `?lang=${locale}`;
 		const next = (target: string): Page =>
 			html`<a class="next" href="${target}" aria-label="${m.next}">${raw(CHEVRON)}</a>`;
 		// The sentence names the address once, and the page renders that one mention as the link.
@@ -181,7 +183,7 @@ export function createApp(
 				html`<main>
 <section id="hello"><h1>${m.hello}</h1><p class="lead">${m.anybody}</p>${next("#write")}</section>
 <section id="write"><p>${before}<a href="mailto:${config.LETTERS_ADDRESS}">${config.LETTERS_ADDRESS}</a>${after}</p>${next("#only")}</section>
-<section id="only"><p>${m.rules}</p><p>${m.only}</p><footer><p>${m.operated(config.OPERATOR_NAME)}</p><p>${m.contact} <a href="mailto:${config.NOTICES_ADDRESS}">${config.NOTICES_ADDRESS}</a></p><p><a href="${TERMS_PATH}">${m.terms}</a> · <a href="${PRIVACY_PATH}">${m.privacy}</a></p></footer></section>
+<section id="only"><p>${m.rules}</p><p>${m.only}</p><footer><p>${m.operated(config.OPERATOR_NAME)}</p><p>${m.contact} <a href="mailto:${config.NOTICES_ADDRESS}">${config.NOTICES_ADDRESS}</a></p><p><a href="${TERMS_PATH}${chosen}">${m.terms}</a> · <a href="${PRIVACY_PATH}${chosen}">${m.privacy}</a></p></footer></section>
 </main>`,
 			),
 		);
