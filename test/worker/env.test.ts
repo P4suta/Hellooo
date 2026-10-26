@@ -37,6 +37,7 @@ describe("readConfig", () => {
 		["an empty model", { MODERATION_MODEL: "" }],
 		["an empty key", { TYPESAFE_API_KEY: "" }],
 		["an Access issuer that is not a URL", { ACCESS_ISSUER: "team" }],
+		["a closed flag that is not true or false", { SERVICE_CLOSED: "yes" }],
 		[
 			"a moderation endpoint outside the disclosed processor",
 			{ MODERATION_ENDPOINT: "https://moderation.example/v1/systemone" },

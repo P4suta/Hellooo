@@ -5,6 +5,8 @@ import {
 } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
+import { SUPPORTED_LOCALES } from "../../src/core/locale.ts";
+import { messagesFor } from "../../src/core/messages.ts";
 import worker, { runStages } from "../../src/worker/index.ts";
 import withDmarcPass from "../fixtures/letter-with-dmarc-pass.eml?raw";
 import { useEmptyStorage } from "./d1.ts";
@@ -13,6 +15,7 @@ import { CONFIG, eventKinds, fakeMessage } from "./fakes.ts";
 useEmptyStorage();
 
 const HTTP_OK = 200;
+const HTTP_SERVICE_UNAVAILABLE = 503;
 
 describe("the Worker's handlers", () => {
 	it("serve the front page", async () => {
@@ -66,6 +69,35 @@ describe("the Worker's handlers", () => {
 		await expect(
 			runStages([["only", async () => undefined]]),
 		).resolves.toBeUndefined();
+	});
+
+	it("answer with a notice, ignore mail, and skip the schedule while closed", async () => {
+		const closed: Env = { ...env, SERVICE_CLOSED: "true" };
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(
+			new Request(`${CONFIG.PUBLIC_BASE_URL}/`),
+			closed,
+			ctx,
+		);
+		expect(response.status).toBe(HTTP_SERVICE_UNAVAILABLE);
+		const text = await response.text();
+		for (const locale of SUPPORTED_LOCALES) {
+			expect(text).toContain(messagesFor(locale).web.front.closed);
+		}
+		const message = fakeMessage(
+			withDmarcPass,
+			"writer@example.com",
+			CONFIG.LETTERS_ADDRESS,
+		);
+		await worker.email(message, closed, ctx);
+		worker.scheduled(
+			createScheduledController({ cron: "*/15 * * * *" }),
+			closed,
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(message.replies).toHaveLength(0);
+		expect(await eventKinds()).toEqual([]);
 	});
 
 	it("route incoming mail through the intake", async () => {

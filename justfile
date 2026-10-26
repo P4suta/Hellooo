@@ -86,5 +86,9 @@ migrate-remote database:
     {{ pnpm }} exec cf d1 migrations apply '{{ database }}'
 
 # Build and publish the Worker to Cloudflare, reading the secrets of the given Doppler config through a mount that is read once.
-deploy config="prd":
-    mkdir -p .cloudflare && {{ doppler }} run --config '{{ config }}' --no-fallback --mount '{{ secrets_mount }}' --mount-max-reads 1 -- {{ pnpm }} exec cf deploy --secrets-file '{{ secrets_mount }}'
+deploy config="prd" mode="production":
+    mkdir -p .cloudflare && {{ doppler }} run --config '{{ config }}' --no-fallback --mount '{{ secrets_mount }}' --mount-max-reads 1 -- {{ pnpm }} exec cf deploy --mode '{{ mode }}' --secrets-file '{{ secrets_mount }}'
+
+# Publish the Worker closed: every page answers with a notice, mail is ignored, and the scheduled run skips; `just deploy` opens it again.
+close config="prd":
+    just deploy '{{ config }}' closed
