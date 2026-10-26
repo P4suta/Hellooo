@@ -45,6 +45,9 @@ export type Messages = {
 			readonly next: string;
 			readonly operated: (operator: string) => string;
 			readonly contact: string;
+			/** The link labels of the terms and the privacy notice at the foot of the front page. */
+			readonly terms: string;
+			readonly privacy: string;
 		};
 		readonly unknown: Titled;
 		readonly verify: {
@@ -161,6 +164,8 @@ const en: Messages = {
 			next: "Next",
 			operated: (operator) => `Operated by ${operator}.`,
 			contact: "Questions and reports:",
+			terms: "Terms",
+			privacy: "Privacy",
 		},
 		unknown: {
 			title: "Unknown link",
@@ -294,6 +299,8 @@ const ja: Messages = {
 			next: "次へ",
 			operated: (operator) => `運営: ${operator}`,
 			contact: "問い合わせと通報:",
+			terms: "利用規約",
+			privacy: "プライバシー",
 		},
 		unknown: {
 			title: "リンクが見つかりません",

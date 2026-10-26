@@ -3,9 +3,16 @@ import { getCookie } from "hono/cookie";
 import { html, raw } from "hono/html";
 import type { HtmlEscapedString } from "hono/utils/html";
 import {
+	type LegalFacts,
+	type LegalPage,
+	privacyPage,
+	termsPage,
+} from "../core/legal.ts";
+import {
 	type Locale,
 	localeFromLanguageTag,
 	negotiateLocale,
+	regionName,
 	SUPPORTED_LOCALES,
 } from "../core/locale.ts";
 import { type Messages, messagesFor } from "../core/messages.ts";
@@ -42,6 +49,9 @@ const HTTP_NOT_FOUND = 404;
 
 /** The operator's pages, guarded by Cloudflare Access. */
 const OPERATOR_PATH = "/admin";
+/** The terms and the privacy notice, linked from the foot of the front page. */
+const TERMS_PATH = "/terms";
+const PRIVACY_PATH = "/privacy";
 /** The header and the cookie through which Cloudflare Access hands a Worker the token it signed. */
 const ACCESS_HEADER = "cf-access-jwt-assertion";
 const ACCESS_COOKIE = "CF_Authorization";
@@ -155,6 +165,8 @@ export function createApp(
 		const config = c.get("config");
 		const locale = c.get("locale");
 		const m = c.get("messages").web.front;
+		// A language chosen in the query follows the visitor to the pages the foot links to; a negotiated one needs no query.
+		const chosen = c.req.query("lang") === undefined ? "" : `?lang=${locale}`;
 		const next = (target: string): Page =>
 			html`<a class="next" href="${target}" aria-label="${m.next}">${raw(CHEVRON)}</a>`;
 		// The sentence names the address once, and the page renders that one mention as the link.
@@ -171,7 +183,7 @@ export function createApp(
 				html`<main>
 <section id="hello"><h1>${m.hello}</h1><p class="lead">${m.anybody}</p>${next("#write")}</section>
 <section id="write"><p>${before}<a href="mailto:${config.LETTERS_ADDRESS}">${config.LETTERS_ADDRESS}</a>${after}</p>${next("#only")}</section>
-<section id="only"><p>${m.rules}</p><p>${m.only}</p><footer><p>${m.operated(config.OPERATOR_NAME)}</p><p>${m.contact} <a href="mailto:${config.NOTICES_ADDRESS}">${config.NOTICES_ADDRESS}</a></p></footer></section>
+<section id="only"><p>${m.rules}</p><p>${m.only}</p><footer><p>${m.operated(config.OPERATOR_NAME)}</p><p>${m.contact} <a href="mailto:${config.NOTICES_ADDRESS}">${config.NOTICES_ADDRESS}</a></p><p><a href="${TERMS_PATH}${chosen}">${m.terms}</a> · <a href="${PRIVACY_PATH}${chosen}">${m.privacy}</a></p></footer></section>
 </main>`,
 			),
 		);
@@ -279,6 +291,9 @@ export function createApp(
 		const stopped = await unsubscribe(c.env.DB, key, c.get("ports").now());
 		return you(c, key, stopped);
 	});
+
+	app.get(TERMS_PATH, (c) => legal(c, termsPage));
+	app.get(PRIVACY_PATH, (c) => legal(c, privacyPage));
 
 	app.get("/report/:key", async (c) => {
 		const delivery = await findDelivery(c.env.DB, c.req.param("key"));
@@ -447,6 +462,34 @@ function ask(
 			html`${text.body === undefined ? "" : html`<p>${text.body}</p>`}
 ${subject}
 <form method="post"><p><button>${text.button}</button></p></form>`,
+		),
+	);
+}
+
+/** The terms or the privacy notice in the visitor's language, with the facts the configuration names. */
+function legal(
+	c: Context,
+	pick: (locale: Locale, facts: LegalFacts) => LegalPage,
+) {
+	const config = c.get("config");
+	const locale = c.get("locale");
+	const text = pick(locale, {
+		service: config.SERVICE_NAME,
+		operator: config.OPERATOR_NAME,
+		contact: config.NOTICES_ADDRESS,
+		jurisdiction: regionName(locale, config.LEGAL_JURISDICTION),
+	});
+	return respond(
+		c,
+		locale,
+		page(
+			locale,
+			config,
+			text.title,
+			html`${text.sections.map(
+				(section) =>
+					html`<h2>${section.heading}</h2>${section.lines.map((line) => html`<p>${line}</p>`)}`,
+			)}`,
 		),
 	);
 }

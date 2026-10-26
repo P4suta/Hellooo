@@ -1,5 +1,23 @@
 import { z } from "zod";
 import { normalizeEmailAddress } from "../core/email-address.ts";
+import { MODERATION_PROCESSOR_DOMAIN } from "../core/legal.ts";
+import { isAssignedRegion } from "../core/locale.ts";
+
+/** Hosts that leave the machine for nobody, so a local stub may stand in for the processor. */
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "[::1]", "localhost"]);
+
+/** Whether letter text and the key sent to this URL reach only the processor the privacy notice names, and only encrypted, or stay on the machine. */
+function reachesDisclosedProcessor(endpoint: string): boolean {
+	const { hostname, protocol } = new URL(endpoint);
+	if (LOOPBACK_HOSTS.has(hostname)) {
+		return true;
+	}
+	return (
+		protocol === "https:" &&
+		(hostname === MODERATION_PROCESSOR_DOMAIN ||
+			hostname.endsWith(`.${MODERATION_PROCESSOR_DOMAIN}`))
+	);
+}
 
 /** A service address under the same rules as a sender's, so comparisons between the two are exact. */
 const Address = z.string().transform((raw, ctx) => {
@@ -14,10 +32,18 @@ const Address = z.string().transform((raw, ctx) => {
 const ConfigSchema = z.object({
 	SERVICE_NAME: z.string().min(1),
 	OPERATOR_NAME: z.string().min(1),
+	/** The region whose law the terms name, as an ISO 3166-1 alpha-2 code that each language spells out itself. */
+	LEGAL_JURISDICTION: z
+		.string()
+		.regex(/^[A-Z]{2}$/)
+		.refine(isAssignedRegion, { message: "not an assigned region code" }),
 	LETTERS_ADDRESS: Address,
 	NOTICES_ADDRESS: Address,
 	PUBLIC_BASE_URL: z.url(),
-	MODERATION_ENDPOINT: z.url(),
+	MODERATION_ENDPOINT: z.url().refine(reachesDisclosedProcessor, {
+		message:
+			"letter text may travel only to the disclosed moderation processor",
+	}),
 	MODERATION_MODEL: z.string().min(1),
 	TYPESAFE_API_KEY: z.string().min(1).optional(),
 	/** The Cloudflare Access team domain that signs operator requests; empty keeps the operator pages closed. */
