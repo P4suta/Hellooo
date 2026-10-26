@@ -7,6 +7,7 @@ mise x -- doppler setup
 mise x -- just dev
 # Doppler holds every secret; `doppler setup` reads doppler.yaml and selects the hellooo project.
 # Mail the letters address once to register, follow the link, and the letter begins its journey.
+# Mail to the public letters address reaches the deployed service; `just intake-sample` posts a fixture letter to the local Worker's email endpoint instead.
 # docs/adr/email-only-participation-with-dmarc-gated-identity.md records the identity model, and docs/adr/moderate-letters-with-a-decision-model.md the moderation model.
 # `just --list` shows the check, types, migration, and deploy recipes.'''
 copyright = "Yasunobu"

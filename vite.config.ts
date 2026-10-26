@@ -6,12 +6,13 @@ const DEFAULT_PORT = 5173;
 const LOOPBACK_HOST = "127.0.0.1";
 // The end-to-end run starts its own dev server on another port with its own state directory.
 const { HELLOOO_DEV_PORT, HELLOOO_STATE_DIR } = process.env;
+/** The state directory `just migrate-local` applies the migrations to, so the dev server opens the same local D1 database. */
+const LOCAL_STATE_DIR = ".cloudflare/state";
 
 export default defineConfig({
 	plugins: [
 		cloudflare({
-			persistState:
-				HELLOOO_STATE_DIR === undefined ? true : { path: HELLOOO_STATE_DIR },
+			persistState: { path: HELLOOO_STATE_DIR ?? LOCAL_STATE_DIR },
 		}),
 	],
 	server: {
