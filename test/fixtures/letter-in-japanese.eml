@@ -1,0 +1,17 @@
+Received: from mail-sor-f41.google.com (mail-sor-f41.google.com. [209.85.220.41])
+        by mx.cloudflare.net with ESMTPS id fixture-ja
+        for <anybody@hellooo.email>;
+        Sat, 25 Oct 2026 03:00:00 +0000
+Authentication-Results: mx.cloudflare.net; dkim=pass header.d=example.jp header.s=fixture header.b=fixture; spf=pass smtp.mailfrom=example.jp; dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from=example.jp
+From: =?UTF-8?B?44GL44GN44Gm?= <kakite@example.jp>
+To: anybody@hellooo.email
+Subject: =?UTF-8?B?44GK44CB44GK44GC44CB44Gg44KM44GL44GE44KL44CA?=
+Date: Sat, 25 Oct 2026 12:00:00 +0900
+Message-ID: <fixture-letter-in-japanese@example.jp>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+お～い、だれかいる～？
+
+今日は雨です。

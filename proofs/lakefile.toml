@@ -1,0 +1,9 @@
+name = "hellooo-proofs"
+defaultTargets = ["Hellooo", "vectors"]
+
+[[lean_lib]]
+name = "Hellooo"
+
+[[lean_exe]]
+name = "vectors"
+root = "Vectors"

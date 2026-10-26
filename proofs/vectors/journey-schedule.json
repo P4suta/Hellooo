@@ -1,0 +1,10 @@
+[{"duration": 0, "clamped": 21600000},
+ {"duration": 1, "clamped": 21600000},
+ {"duration": 21599999, "clamped": 21600000},
+ {"duration": 21600000, "clamped": 21600000},
+ {"duration": 21600001, "clamped": 21600001},
+ {"duration": 259200000, "clamped": 259200000},
+ {"duration": 1814399999, "clamped": 1814399999},
+ {"duration": 1814400000, "clamped": 1814400000},
+ {"duration": 1814400001, "clamped": 1814400000},
+ {"duration": 86400000000, "clamped": 1814400000}]

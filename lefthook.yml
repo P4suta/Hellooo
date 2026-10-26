@@ -1,0 +1,14 @@
+# Quick checks on what is staged before a commit, and the project's full fast gate before a push.
+pre-commit:
+  commands:
+    biome:
+      glob: "*.{ts,mjs,json,jsonc}"
+      run: mise x -- pnpm exec biome check --error-on-warnings --no-errors-on-unmatched {staged_files}
+    typecheck:
+      glob: "*.ts"
+      run: mise x -- just typecheck
+
+pre-push:
+  commands:
+    check:
+      run: mise x -- just check
