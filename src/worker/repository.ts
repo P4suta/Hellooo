@@ -359,6 +359,9 @@ export type Acceptance = {
 	readonly now: Instant;
 };
 
+/** The statuses of a letter that still waits for a link or for the model; only such a letter can be accepted, refused, held, or dropped. */
+const WAITING = "'pending_verification', 'pending_confirmation', 'held'";
+
 /**
  * Marks the letter traveling and grants the sender one credit in one transaction, and only while the sender has no other letter accepted within the week.
  * The cap is checked again here because several letters can wait for their links or for the model at once; false means the letter lost that race.
@@ -367,12 +370,13 @@ export async function acceptLetter(
 	db: D1Database,
 	acceptance: Acceptance,
 ): Promise<boolean> {
+	// The credit and the event follow the one transition that this call made: the letter travels from this instant, and no acceptance was recorded before.
 	const accepted =
-		"EXISTS (SELECT 1 FROM letters WHERE id = ?1 AND status = 'traveling' AND accepted_at = ?2)";
+		"EXISTS (SELECT 1 FROM letters WHERE id = ?1 AND status = 'traveling' AND accepted_at = ?2) AND NOT EXISTS (SELECT 1 FROM events WHERE letter_id = ?1 AND kind = 'letter_accepted')";
 	const [update] = await db.batch([
 		db
 			.prepare(
-				"UPDATE letters SET status = 'traveling', accepted_at = ?2, deliver_after = ?3, moderation = ?4, confirm_token = NULL WHERE id = ?1 AND status IN ('pending_verification', 'pending_confirmation', 'held') AND NOT EXISTS (SELECT 1 FROM letters o WHERE o.sender_id = ?5 AND o.id != ?1 AND o.accepted_at > ?2 - ?6)",
+				`UPDATE letters SET status = 'traveling', accepted_at = ?2, deliver_after = ?3, moderation = ?4, confirm_token = NULL WHERE id = ?1 AND status IN (${WAITING}) AND NOT EXISTS (SELECT 1 FROM letters o WHERE o.sender_id = ?5 AND o.id != ?1 AND o.accepted_at > ?2 - ?6)`,
 			)
 			.bind(
 				acceptance.letterId,
@@ -406,15 +410,14 @@ export async function dropOverCap(
 	await db.batch([
 		db
 			.prepare(
-				"UPDATE letters SET status = 'lost', confirm_token = NULL WHERE id = ?",
+				`UPDATE letters SET status = 'lost', confirm_token = NULL WHERE id = ?1 AND status IN (${WAITING})`,
 			)
 			.bind(id),
-		eventStatement(db, {
-			kind: "letter_over_cap",
-			userId: senderId,
-			letterId: id,
-			now,
-		}),
+		db
+			.prepare(
+				"INSERT INTO events (kind, user_id, letter_id, detail, created_at) SELECT 'letter_over_cap', ?2, ?1, NULL, ?3 WHERE EXISTS (SELECT 1 FROM letters WHERE id = ?1 AND status = 'lost') AND NOT EXISTS (SELECT 1 FROM events WHERE letter_id = ?1 AND kind = 'letter_over_cap')",
+			)
+			.bind(id, senderId, now),
 	]);
 }
 
@@ -426,18 +429,18 @@ export async function settleLetter(
 	moderation: string,
 	now: Instant,
 ): Promise<void> {
+	const kind = status === "rejected" ? "letter_rejected" : "letter_held";
 	await db.batch([
 		db
 			.prepare(
-				"UPDATE letters SET status = ?, moderation = ?, confirm_token = NULL WHERE id = ?",
+				`UPDATE letters SET status = ?1, moderation = ?2, confirm_token = NULL WHERE id = ?3 AND status IN (${WAITING})`,
 			)
 			.bind(status, moderation, id),
-		eventStatement(db, {
-			kind: status === "rejected" ? "letter_rejected" : "letter_held",
-			userId: senderId,
-			letterId: id,
-			now,
-		}),
+		db
+			.prepare(
+				"INSERT INTO events (kind, user_id, letter_id, detail, created_at) SELECT ?4, ?5, ?3, NULL, ?6 WHERE EXISTS (SELECT 1 FROM letters WHERE id = ?3 AND status = ?1 AND moderation = ?2)",
+			)
+			.bind(status, moderation, id, kind, senderId, now),
 	]);
 }
 

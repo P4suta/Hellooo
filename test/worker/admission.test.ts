@@ -155,6 +155,55 @@ describe("admitting a stored letter", () => {
 		expect(await creditsOf(writer)).toBe(2);
 	});
 
+	it("treats a letter another run accepted meanwhile as accepted, without a second credit", async () => {
+		const ports = fakePorts();
+		const writer = await seedActiveUser(ports, "writer@example.com");
+		const letter = await storeLetter(env.DB, {
+			id: "letter-1",
+			senderId: writer.id,
+			body: "Hellooo?",
+			status: "held",
+			now: T0,
+		});
+		expect(await admitLetter(env.DB, ports, letter, T0)).toEqual({
+			kind: "accept",
+		});
+		// The intake still holds the stale `held` row while the scheduled run has accepted the same letter.
+		expect(await admitLetter(env.DB, ports, letter, T0)).toEqual({
+			kind: "accept",
+		});
+		expect(await creditsOf(writer)).toBe(1);
+		expect(
+			(await eventKinds()).filter((kind) => kind === "letter_accepted"),
+		).toHaveLength(1);
+		expect(await eventKinds()).not.toContain("letter_over_cap");
+		expect(must(await findLetter(env.DB, letter.id)).status).toBe("traveling");
+	});
+
+	it("leaves a traveling letter alone when a stale run would refuse or hold it", async () => {
+		const ports = fakePorts();
+		const writer = await seedActiveUser(ports, "writer@example.com");
+		const letter = await storeLetter(env.DB, {
+			id: "letter-1",
+			senderId: writer.id,
+			body: "Hellooo?",
+			status: "held",
+			now: T0,
+		});
+		await admitLetter(env.DB, ports, letter, T0);
+		ports.verdict = "reject";
+		expect(await admitLetter(env.DB, ports, letter, T0)).toEqual({
+			kind: "reject-content",
+		});
+		ports.verdict = null;
+		expect(await admitLetter(env.DB, ports, letter, T0)).toEqual({
+			kind: "retry-later",
+		});
+		expect(must(await findLetter(env.DB, letter.id)).status).toBe("traveling");
+		expect(await eventKinds()).not.toContain("letter_rejected");
+		expect(await eventKinds()).not.toContain("letter_held");
+	});
+
 	it("draws the journey length from the ports' randomness", async () => {
 		const shortest = fakePorts({ uniform: 0 });
 		const writer = await seedActiveUser(shortest, "writer@example.com");

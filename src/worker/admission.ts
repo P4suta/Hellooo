@@ -9,6 +9,7 @@ import type { Ports } from "./ports.ts";
 import {
 	acceptLetter,
 	dropOverCap,
+	findLetter,
 	type Letter,
 	lastAcceptedAt,
 	settleLetter,
@@ -41,6 +42,10 @@ export async function admitLetter(
 				now,
 			});
 			if (accepted) {
+				break;
+			}
+			// Another run may have accepted this very letter meanwhile, which is the same outcome and takes no second credit.
+			if ((await findLetter(db, letter.id))?.status === "traveling") {
 				break;
 			}
 			const cap = weeklyCap(await lastAcceptedAt(db, letter.senderId), now);
