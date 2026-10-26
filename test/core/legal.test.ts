@@ -63,7 +63,10 @@ describe("the terms and the privacy notice", () => {
 			const text = privacyPage(locale, FACTS)
 				.sections.flatMap((section) => section.lines)
 				.join("\n");
-			expect(text).toContain(String(RETENTION_DAYS));
+			// Both timing rules name the period: from delivery or refusal, and from arrival for a letter never accepted.
+			expect(
+				text.split(String(RETENTION_DAYS)).length - 1,
+			).toBeGreaterThanOrEqual(2);
 			expect(text).toContain(PROCESSORS.hosting);
 			expect(text).toContain(PROCESSORS.moderation);
 			expect(text).toContain(FACTS.operator);
