@@ -405,6 +405,24 @@ describe("credits in the database", () => {
 		expect(await creditsOf(gone)).toBe(1);
 	});
 
+	it("records a settlement only when it changes the letter", async () => {
+		const ports = fakePorts();
+		const writer = await seedActiveUser(ports, "writer@example.com");
+		const held = await seedHeldLetter(ports, writer, "held");
+		// The first hold names a moderation the letter lacked; the second changes nothing.
+		await settleLetter(env.DB, held.id, writer.id, "held", "pending", T0);
+		await settleLetter(env.DB, held.id, writer.id, "held", "pending", T0);
+		expect(
+			(await eventKinds()).filter((kind) => kind === "letter_held"),
+		).toHaveLength(1);
+		await settleLetter(env.DB, held.id, writer.id, "rejected", "reject", T0);
+		await settleLetter(env.DB, held.id, writer.id, "rejected", "reject", T0);
+		expect(
+			(await eventKinds()).filter((kind) => kind === "letter_rejected"),
+		).toHaveLength(1);
+		expect(must(await findLetter(env.DB, held.id)).status).toBe("rejected");
+	});
+
 	it("undo a delivery once only, and never a finished one", async () => {
 		const ports = fakePorts();
 		const writer = await seedActiveUser(ports, "writer@example.com");

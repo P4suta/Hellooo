@@ -448,17 +448,18 @@ export async function settleLetter(
 	now: Instant,
 ): Promise<void> {
 	const kind = status === "rejected" ? "letter_rejected" : "letter_held";
+	// The batch runs in one transaction on one connection, so `changes()` in the second statement counts the rows the first one changed; a settlement that changes nothing records nothing.
 	await db.batch([
 		db
 			.prepare(
-				`UPDATE letters SET status = ?1, moderation = ?2, confirm_token = NULL WHERE id = ?3 AND status IN (${WAITING})`,
+				`UPDATE letters SET status = ?1, moderation = ?2, confirm_token = NULL WHERE id = ?3 AND status IN (${WAITING}) AND NOT (status = ?1 AND moderation IS ?2)`,
 			)
 			.bind(status, moderation, id),
 		db
 			.prepare(
-				"INSERT INTO events (kind, user_id, letter_id, detail, created_at) SELECT ?4, ?5, ?3, NULL, ?6 WHERE EXISTS (SELECT 1 FROM letters WHERE id = ?3 AND status = ?1 AND moderation = ?2)",
+				"INSERT INTO events (kind, user_id, letter_id, detail, created_at) SELECT ?1, ?2, ?3, NULL, ?4 WHERE changes() > 0",
 			)
-			.bind(status, moderation, id, kind, senderId, now),
+			.bind(kind, senderId, id, now),
 	]);
 }
 
