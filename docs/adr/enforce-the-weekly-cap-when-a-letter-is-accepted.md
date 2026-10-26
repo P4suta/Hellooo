@@ -28,6 +28,7 @@ A sender could store five unsigned letters in one day, open all five confirmatio
 - The credit law holds whatever the order and timing of links and model answers; the model-based invariant test refuses a credit for a letter the database refused.
 - A writer who confirms two letters in one week keeps the first and loses the second, as the arrival check would have told them.
 - `acceptLetter` answers whether it accepted, and the admission step turns a refusal into the over-cap outcome.
+- The admission step reads the cap before it asks the model, so a letter whose week is taken costs no model call; the conditional acceptance stays as the guard against two runs racing.
 
 ## Alternatives rejected
 

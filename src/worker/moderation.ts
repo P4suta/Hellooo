@@ -17,6 +17,18 @@ const AnswersSchema = z.object({
 
 export type Fetch = (url: string, init: RequestInit) => Promise<Response>;
 
+/** How long another service may take to answer before the Worker treats it as unavailable. */
+export const UPSTREAM_TIMEOUT_MS = 10_000;
+
+/** The options of every call to another service: a redirect is never followed, so a key and a text reach only the configured host, and a silence ends at the timeout. */
+export function upstreamInit(init: RequestInit): RequestInit {
+	return {
+		...init,
+		redirect: "manual",
+		signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+	};
+}
+
 /** The request body TypeSafe's Jev accepts: one yes/no question per moderation rule, answered with a probability. */
 export function jevRequest(
 	model: string,
@@ -48,14 +60,17 @@ export async function moderateWithJev(
 		return null;
 	}
 	try {
-		const response = await fetchImpl(config.MODERATION_ENDPOINT, {
-			method: "POST",
-			headers: {
-				Authorization: `Bearer ${config.TYPESAFE_API_KEY}`,
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify(jevRequest(config.MODERATION_MODEL, letter)),
-		});
+		const response = await fetchImpl(
+			config.MODERATION_ENDPOINT,
+			upstreamInit({
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${config.TYPESAFE_API_KEY}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(jevRequest(config.MODERATION_MODEL, letter)),
+			}),
+		);
 		if (!response.ok) {
 			throw new Error(`the decision model answered ${response.status}`);
 		}

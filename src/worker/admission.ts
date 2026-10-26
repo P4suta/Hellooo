@@ -30,6 +30,16 @@ export async function admitLetter(
 	letter: Letter,
 	now: Instant,
 ): Promise<AdmissionOutcome> {
+	// Another run may have sent this letter on its way already; that acceptance is the outcome, and its own accepted_at must not count against it.
+	if ((await findLetter(db, letter.id))?.status === "traveling") {
+		return { kind: "accept" };
+	}
+	// A letter whose week another letter holds is dropped before the model is asked, so it costs no call; the conditional acceptance below remains the guard against a race.
+	const before = weeklyCap(await lastAcceptedAt(db, letter.senderId), now);
+	if (!before.allowed) {
+		await dropOverCap(db, letter.id, letter.senderId, now);
+		return { kind: "over-cap", nextAllowedAt: before.nextAllowedAt };
+	}
 	const verdict = await ports.moderate(letter.body);
 	const decision = decideAfterModeration(verdict);
 	switch (decision.kind) {

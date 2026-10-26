@@ -66,6 +66,15 @@ function tagName(tag: string): string {
 }
 
 /** The index of the `>` that ends the tag opened at `open`, or -1 when the tag never closes. */
+const COMMENT_OPEN = "<!--";
+const COMMENT_CLOSE = "-->";
+
+/** The index of the last character of a comment's `-->`, or -1 when the comment never closes; a `>` inside the comment ends nothing. */
+function commentEnd(html: string, open: number): number {
+	const close = html.indexOf(COMMENT_CLOSE, open + COMMENT_OPEN.length);
+	return close === -1 ? -1 : close + COMMENT_CLOSE.length - 1;
+}
+
 function tagEnd(html: string, open: number): number {
 	TAG_TOKEN.lastIndex = open + 1;
 	for (
@@ -102,7 +111,9 @@ function stripTags(html: string): string {
 			i = open + 1;
 			continue;
 		}
-		const end = tagEnd(html, open);
+		const end = html.startsWith(COMMENT_OPEN, open)
+			? commentEnd(html, open)
+			: tagEnd(html, open);
 		if (end === -1) {
 			return out + html.slice(open);
 		}

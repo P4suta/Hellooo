@@ -15,6 +15,7 @@ const MS_PER_S = 1000;
 const RSA_BITS = 2048;
 const RSA_EXPONENT = new Uint8Array([1, 0, 1]);
 const HTTP_OK = 200;
+const HTTP_FOUND = 302;
 const HTTP_UNAVAILABLE = 503;
 
 type Jwk = JsonWebKey & { kid: string; alg: string };
@@ -71,16 +72,21 @@ function claims(overrides: Partial<JWTPayload> = {}): JWTPayload {
 function serving(
 	keys: readonly Jwk[],
 	status = HTTP_OK,
-): Fetch & { calls: string[] } {
+): Fetch & { calls: string[]; inits: RequestInit[] } {
 	const calls: string[] = [];
-	const fetchImpl = async (url: string): Promise<Response> => {
+	const inits: RequestInit[] = [];
+	const fetchImpl = async (
+		url: string,
+		init: RequestInit,
+	): Promise<Response> => {
 		calls.push(url);
+		inits.push(init);
 		return new Response(JSON.stringify({ keys }), {
 			status,
 			headers: { "content-type": "application/json" },
 		});
 	};
-	return Object.assign(fetchImpl, { calls });
+	return Object.assign(fetchImpl, { calls, inits });
 }
 
 beforeAll(async () => {
@@ -96,6 +102,17 @@ describe("the operator's sign-in through Cloudflare Access", () => {
 			email: "owner@example.com",
 		});
 		expect(fetchImpl.calls).toEqual([`${ISSUER}/cdn-cgi/access/certs`]);
+	});
+
+	it("never follows a redirect of the key set and bounds the wait", async () => {
+		const token = await sign(claims(), signingKey);
+		const fetchImpl = serving([publishedKey]);
+		await verifyOperator(token, config, fetchImpl);
+		expect(fetchImpl.inits[0]?.redirect).toBe("manual");
+		expect(fetchImpl.inits[0]?.signal).toBeInstanceOf(AbortSignal);
+		expect(
+			await verifyOperator(token, config, serving([publishedKey], HTTP_FOUND)),
+		).toBeNull();
 	});
 
 	it("accepts an audience given as one string", async () => {

@@ -2,7 +2,7 @@ import { verifyWithJwks } from "hono/jwt";
 import type { HonoJsonWebKey } from "hono/utils/jwt/jws";
 import { z } from "zod";
 import { type Config, operatorAccess } from "./env.ts";
-import type { Fetch } from "./moderation.ts";
+import { type Fetch, upstreamInit } from "./moderation.ts";
 
 export type Operator = { readonly email: string };
 
@@ -41,9 +41,10 @@ export async function verifyOperator(
 		return null;
 	}
 	try {
-		const response = await fetchImpl(`${access.issuer}${CERTS_PATH}`, {
-			method: "GET",
-		});
+		const response = await fetchImpl(
+			`${access.issuer}${CERTS_PATH}`,
+			upstreamInit({ method: "GET" }),
+		);
 		if (!response.ok) {
 			throw new Error(`the Access keys answered ${response.status}`);
 		}

@@ -68,6 +68,13 @@ describe("plainTextOfHtml", () => {
 	it("treats a processing instruction and a tag named inside a comment as markup only", () => {
 		expect(plainTextOfHtml('<?xml version="1.0"?>text')).toBe("text");
 		expect(plainTextOfHtml("<!-- script output removed -->text")).toBe("text");
+		expect(plainTextOfHtml("<!-- a > b -->text")).toBe("text");
+		expect(
+			plainTextOfHtml("<!--[if gte mso 9]><xml>x</xml><![endif]-->t"),
+		).toBe("t");
+		expect(plainTextOfHtml("<!-- never closed > text")).toBe(
+			"<!-- never closed > text",
+		);
 		expect(plainTextOfHtml("<!--[if mso]><style>x</style><![endif]-->t")).toBe(
 			"t",
 		);

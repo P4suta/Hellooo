@@ -120,7 +120,8 @@ describe("asking the model again", () => {
 		}
 		expect((await retryModeration(env, ports)).held).toBe(HELD_LETTERS_PER_RUN);
 		expect((await retryModeration(env, ports)).held).toBe(1);
-		expect(ports.moderated).toHaveLength(HELD_LETTERS_PER_RUN + 1);
+		// One letter took the writer's week, so the others were dropped before the model was asked.
+		expect(ports.moderated).toHaveLength(1);
 	});
 
 	it("does nothing without a waiting letter", async () => {

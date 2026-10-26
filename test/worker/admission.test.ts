@@ -137,6 +137,8 @@ describe("admitting a stored letter", () => {
 		});
 		expect(await creditsOf(writer)).toBe(1);
 		expect(await eventKinds()).toContain("letter_over_cap");
+		// The dropped letter never reached the model.
+		expect(ports.moderated).toEqual(["First"]);
 		const third = await storeLetter(env.DB, {
 			id: "letter-3",
 			senderId: writer.id,

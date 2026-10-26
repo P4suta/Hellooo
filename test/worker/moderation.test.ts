@@ -12,6 +12,7 @@ import {
 } from "../../src/worker/moderation.ts";
 
 const HTTP_OK = 200;
+const HTTP_FOUND = 302;
 const HTTP_UNPROCESSABLE = 422;
 const HTTP_SERVER_ERROR = 500;
 const LETTER = "Hellooo? Anybody there?";
@@ -89,6 +90,20 @@ describe("moderateWithJev", () => {
 		expect(JSON.parse(String(call?.init.body))).toEqual(
 			jevRequest("jev-latest", LETTER),
 		);
+	});
+
+	it("never follows a redirect and bounds the wait", async () => {
+		const captured: Captured[] = [];
+		await moderateWithJev(config, LETTER, answering(0, captured));
+		const [call] = captured;
+		expect(call?.init.redirect).toBe("manual");
+		expect(call?.init.signal).toBeInstanceOf(AbortSignal);
+		const redirecting: Fetch = async () =>
+			new Response(null, {
+				status: HTTP_FOUND,
+				headers: { location: "https://elsewhere.example/" },
+			});
+		expect(await moderateWithJev(config, LETTER, redirecting)).toBeNull();
 	});
 
 	it("delivers or rejects by the threshold", async () => {
