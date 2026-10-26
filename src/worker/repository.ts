@@ -500,20 +500,36 @@ export async function verifyUser(
 	readonly user: User;
 	readonly waiting: readonly Letter[];
 } | null> {
-	const row = await db
+	const pending = await db
 		.prepare(
-			"UPDATE users SET status = 'active', verified_at = ?, verify_token = NULL WHERE verify_token = ? AND status = 'pending' RETURNING id",
+			"SELECT id FROM users WHERE verify_token = ? AND status = 'pending'",
 		)
-		.bind(now, verifyToken)
+		.bind(verifyToken)
 		.first();
-	if (row === null) {
+	if (pending === null) {
 		return null;
 	}
-	const id = stored(userId(IdRowSchema.parse(row).id), "user id");
+	const id = stored(userId(IdRowSchema.parse(pending).id), "user id");
+	// One transaction spends the link and moves the waiting letters to held, so a failure after the click leaves them for the scheduled run; `changes()` keeps the second statement to the call that activated.
+	const [activation] = await db.batch([
+		db
+			.prepare(
+				"UPDATE users SET status = 'active', verified_at = ?1, verify_token = NULL WHERE id = ?2 AND verify_token = ?3 AND status = 'pending'",
+			)
+			.bind(now, id, verifyToken),
+		db
+			.prepare(
+				"UPDATE letters SET status = 'held' WHERE sender_id = ?1 AND status = 'pending_verification' AND changes() > 0",
+			)
+			.bind(id),
+	]);
+	if ((activation?.meta.changes ?? 0) === 0) {
+		return null;
+	}
 	const user = stored(await findUserById(db, id), "user");
 	const { results } = await db
 		.prepare(
-			`SELECT ${LETTER_COLUMNS} FROM letters WHERE sender_id = ? AND status = 'pending_verification' ORDER BY created_at`,
+			`SELECT ${LETTER_COLUMNS} FROM letters WHERE sender_id = ? AND status = 'held' ORDER BY created_at`,
 		)
 		.bind(id)
 		.all();
@@ -531,7 +547,8 @@ export async function confirmLetter(
 ): Promise<Letter | null> {
 	const row = await db
 		.prepare(
-			`UPDATE letters SET confirm_token = NULL WHERE confirm_token = ? AND status = 'pending_confirmation' RETURNING ${LETTER_COLUMNS}`,
+			// The one statement spends the link and moves the letter to held, so a failure after the click leaves it for the scheduled run rather than stranded without a link.
+			`UPDATE letters SET confirm_token = NULL, status = 'held' WHERE confirm_token = ? AND status = 'pending_confirmation' RETURNING ${LETTER_COLUMNS}`,
 		)
 		.bind(confirmToken)
 		.first();

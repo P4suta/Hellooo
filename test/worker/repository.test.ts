@@ -139,6 +139,14 @@ describe("users", () => {
 			"first",
 			"second",
 		]);
+		// The letters left pending verification in the same transaction, so a failure from here on leaves them to the scheduled run.
+		expect(verified.waiting.map((letter) => letter.status)).toEqual([
+			"held",
+			"held",
+		]);
+		expect(
+			must(await findLetter(env.DB, must(verified.waiting[0]).id)).status,
+		).toBe("held");
 		expect(await verifyUser(env.DB, "verify-1", T0)).toBeNull();
 		expect(await eventKinds()).toEqual(["user_verified"]);
 	});
@@ -222,9 +230,11 @@ describe("letters", () => {
 			now: T0,
 		});
 		expect(await confirmLetter(env.DB, "wrong", T0)).toBeNull();
-		expect(must(await confirmLetter(env.DB, "confirm-1", T0)).id).toBe(
-			"letter-1",
-		);
+		const confirmed = must(await confirmLetter(env.DB, "confirm-1", T0));
+		expect(confirmed.id).toBe("letter-1");
+		// The link is spent and the letter held in one statement.
+		expect(confirmed.status).toBe("held");
+		expect(must(await findLetter(env.DB, confirmed.id)).status).toBe("held");
 		expect(await confirmLetter(env.DB, "confirm-1", T0)).toBeNull();
 		expect(await eventKinds()).toContain("letter_confirmed");
 	});

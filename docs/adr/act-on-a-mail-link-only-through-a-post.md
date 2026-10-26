@@ -29,6 +29,7 @@ The stop link already avoided this by showing a page first.
 - A link opened by a scanner leaves the address pending, the letter unconfirmed, and the letter unreported.
 - A person clicks once more than before, on a page that names what the click does.
 - The one-click stop of `List-Unsubscribe` stays a post from the mail client, as it was.
+- The statement that spends a verification or confirmation link moves the letter to held in the same transaction, so a failure after the click leaves the letter to the scheduled run instead of pending without a link.
 
 ## Alternatives rejected
 
