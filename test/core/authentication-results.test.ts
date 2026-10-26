@@ -1,6 +1,9 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { dmarcResult } from "../../src/core/authentication-results.ts";
+import {
+	dmarcResult,
+	withoutComments,
+} from "../../src/core/authentication-results.ts";
 
 const CLOUDFLARE_PASS =
 	"mx.cloudflare.net; dkim=pass header.d=gmail.com header.s=20230601; spf=pass smtp.mailfrom=gmail.com; dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from=gmail.com";
@@ -110,8 +113,38 @@ describe("dmarcResult", () => {
 				const [first = ""] = headers;
 				return (
 					dmarcResult(headers) !== "pass" ||
-					/dmarc=pass/i.test(first.replace(/\([^)]*\)/g, ""))
+					/dmarc=pass/i.test(withoutComments(first))
 				);
+			}),
+		);
+	});
+
+	it("ignores a dmarc clause written inside a comment, nested or not", () => {
+		expect(dmarcResult(["mx.example; (dmarc=pass (really)) spf=pass"])).toBe(
+			"none",
+		);
+		expect(dmarcResult(["mx.example; (dmarc=pass; ) dmarc=fail"])).toBe("fail");
+	});
+});
+
+describe("withoutComments", () => {
+	it("drops comments, nested ones included, and keeps the rest", () => {
+		expect(withoutComments("a (b (c) d) e")).toBe("a  e");
+		expect(withoutComments("dmarc=pass (p=NONE) header.from=x")).toBe(
+			"dmarc=pass  header.from=x",
+		);
+	});
+
+	it("lets an unclosed comment swallow the rest and keeps a stray close", () => {
+		expect(withoutComments("a (b c")).toBe("a ");
+		expect(withoutComments("a ) b")).toBe("a ) b");
+	});
+
+	it("never keeps a parenthesis that opened a comment, whatever the input", () => {
+		fc.assert(
+			fc.property(fc.string(), (value) => {
+				const kept = withoutComments(value);
+				return !kept.includes("(") && kept.length <= value.length;
 			}),
 		);
 	});

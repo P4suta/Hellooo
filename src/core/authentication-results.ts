@@ -1,6 +1,5 @@
 import type { DmarcResult } from "./types.ts";
 
-const COMMENT = /\([^)]*\)/g;
 const DMARC_METHOD = "dmarc=";
 /** A clause whose method is `dmarc`, with its result token; anchored so `x-dmarc=` and `dmarcx=` never match. */
 const DMARC_CLAUSE = /^dmarc=[a-z0-9]+/i;
@@ -14,7 +13,7 @@ export function dmarcResult(headerValues: readonly string[]): DmarcResult {
 	if (trusted === undefined) {
 		return "none";
 	}
-	for (const clause of trusted.replace(COMMENT, "").split(";")) {
+	for (const clause of withoutComments(trusted).split(";")) {
 		const match = DMARC_CLAUSE.exec(clause.trim());
 		if (match !== null) {
 			const result = match[0].slice(DMARC_METHOD.length).toLowerCase();
@@ -22,4 +21,23 @@ export function dmarcResult(headerValues: readonly string[]): DmarcResult {
 		}
 	}
 	return "none";
+}
+
+/**
+ * Drops the parenthesized comments of a header value in one pass, nesting included, so a value made of open parentheses costs linear time.
+ * An unclosed comment swallows the rest of the value, as a mail parser reads it.
+ */
+export function withoutComments(value: string): string {
+	let depth = 0;
+	let kept = "";
+	for (const char of value) {
+		if (char === "(") {
+			depth += 1;
+		} else if (char === ")" && depth > 0) {
+			depth -= 1;
+		} else if (depth === 0) {
+			kept += char;
+		}
+	}
+	return kept;
 }
