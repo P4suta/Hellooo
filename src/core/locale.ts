@@ -87,6 +87,19 @@ export function localeFromContentLanguage(
 }
 
 /** The name of a region in the reader's language, from its ISO 3166-1 alpha-2 code; the code itself when the runtime has no name for it. */
+/** The codes ISO 3166-1 leaves to users (AA, QM to QZ, XA to XZ, ZZ); some carry a CLDR label, such as the pseudo-locales and the unknown region, but none names a jurisdiction. */
+const USER_ASSIGNED_REGION = /^(?:AA|Q[M-Z]|X[A-Z]|ZZ)$/;
+
+/** Whether the two letters name a region that ISO 3166-1 assigned and CLDR knows, so the terms never claim the law of a code nobody assigned. */
+export function isAssignedRegion(code: string): boolean {
+	return (
+		!USER_ASSIGNED_REGION.test(code) &&
+		new Intl.DisplayNames("en", { type: "region", fallback: "none" }).of(
+			code,
+		) !== undefined
+	);
+}
+
 export function regionName(locale: Locale, code: string): string {
 	return (
 		new Intl.DisplayNames(locale, { type: "region", fallback: "code" }).of(

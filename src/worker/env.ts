@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { normalizeEmailAddress } from "../core/email-address.ts";
 import { MODERATION_PROCESSOR_DOMAIN } from "../core/legal.ts";
+import { isAssignedRegion } from "../core/locale.ts";
 
 /** Hosts that leave the machine for nobody, so a local stub may stand in for the processor. */
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "[::1]", "localhost"]);
@@ -32,7 +33,10 @@ const ConfigSchema = z.object({
 	SERVICE_NAME: z.string().min(1),
 	OPERATOR_NAME: z.string().min(1),
 	/** The region whose law the terms name, as an ISO 3166-1 alpha-2 code that each language spells out itself. */
-	LEGAL_JURISDICTION: z.string().regex(/^[A-Z]{2}$/),
+	LEGAL_JURISDICTION: z
+		.string()
+		.regex(/^[A-Z]{2}$/)
+		.refine(isAssignedRegion, { message: "not an assigned region code" }),
 	LETTERS_ADDRESS: Address,
 	NOTICES_ADDRESS: Address,
 	PUBLIC_BASE_URL: z.url(),

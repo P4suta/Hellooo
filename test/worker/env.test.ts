@@ -49,6 +49,9 @@ describe("readConfig", () => {
 			"a moderation endpoint that leaves the machine unencrypted",
 			{ MODERATION_ENDPOINT: "http://api.typesafe.ai/v1/systemone" },
 		],
+		["a lowercase jurisdiction", { LEGAL_JURISDICTION: "jp" }],
+		["a jurisdiction nobody assigned", { LEGAL_JURISDICTION: "QQ" }],
+		["the unknown region", { LEGAL_JURISDICTION: "ZZ" }],
 	])("refuses %s", (_name, override) => {
 		expect(() => readConfig({ ...env, ...override })).toThrow();
 	});

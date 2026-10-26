@@ -8,7 +8,11 @@ import {
 	RETENTION_DAYS,
 	termsPage,
 } from "../../src/core/legal.ts";
-import { regionName, SUPPORTED_LOCALES } from "../../src/core/locale.ts";
+import {
+	isAssignedRegion,
+	regionName,
+	SUPPORTED_LOCALES,
+} from "../../src/core/locale.ts";
 
 const FACTS: LegalFacts = {
 	service: "Hellooo",
@@ -96,5 +100,15 @@ describe("regionName", () => {
 		expect(regionName("en", "JP")).toBe("Japan");
 		expect(regionName("ja", "JP")).toBe("日本");
 		expect(regionName("en", "DE")).toBe("Germany");
+	});
+});
+
+describe("isAssignedRegion", () => {
+	it("knows the assigned codes and refuses the user-assigned and unknown ones", () => {
+		expect(isAssignedRegion("JP")).toBe(true);
+		expect(isAssignedRegion("DE")).toBe(true);
+		expect(isAssignedRegion("QQ")).toBe(false);
+		expect(isAssignedRegion("XA")).toBe(false);
+		expect(isAssignedRegion("ZZ")).toBe(false);
 	});
 });
