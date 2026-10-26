@@ -191,13 +191,14 @@ describe("admitting a stored letter", () => {
 			now: T0,
 		});
 		await admitLetter(env.DB, ports, letter, T0);
+		// The persisted acceptance wins over a stale verdict, so nobody hears of a refusal for a letter on its way.
 		ports.verdict = "reject";
 		expect(await admitLetter(env.DB, ports, letter, T0)).toEqual({
-			kind: "reject-content",
+			kind: "accept",
 		});
 		ports.verdict = null;
 		expect(await admitLetter(env.DB, ports, letter, T0)).toEqual({
-			kind: "retry-later",
+			kind: "accept",
 		});
 		expect(must(await findLetter(env.DB, letter.id)).status).toBe("traveling");
 		expect(await eventKinds()).not.toContain("letter_rejected");

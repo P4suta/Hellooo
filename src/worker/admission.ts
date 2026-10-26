@@ -78,5 +78,9 @@ export async function admitLetter(
 			);
 			break;
 	}
+	// A refusal or a hold changes nothing once another run has sent the letter on its way, and that acceptance is the outcome.
+	if ((await findLetter(db, letter.id))?.status === "traveling") {
+		return { kind: "accept" };
+	}
 	return decision;
 }
