@@ -19,7 +19,7 @@ export default defineConfig({
 				plugins: [
 					cloudflareTest(async () => ({
 						// The Worker is described by cloudflare.config.ts, which the plugin reads through this option.
-						experimental: { newConfig: true },
+						config: true,
 						miniflare: {
 							bindings: {
 								TEST_MIGRATIONS: await readD1Migrations(D1_MIGRATIONS),

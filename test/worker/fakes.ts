@@ -110,6 +110,7 @@ export function fakeMessage(
 		headers: new Headers(),
 		raw: new Blob([bytes]).stream(),
 		rawSize: bytes.byteLength,
+		canBeForwarded: false,
 		replies,
 		setReject: () => {
 			throw new Error("the intake never rejects at SMTP level");
